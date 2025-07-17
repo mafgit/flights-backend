@@ -2,9 +2,16 @@ import express from "express";
 import dotenv from "dotenv";
 import { ZodError } from "zod";
 import cors from "cors";
-import cookieParser from 'cookie-parser'
+import cookieParser from "cookie-parser";
 
-dotenv.config();
+const environment = process.env.NODE_ENV || "development";
+if (environment !== "production") {
+  // no need for dotenv config loading when in production
+  dotenv.config({ quiet: true }); // loads base .env
+  dotenv.config({ path: `.env.${environment}`, quiet: true }); // loads more env variables specific to environment
+  // environment maybe development or test
+}
+
 import "./database/db";
 
 import AuthRouter from "./entities/auth/auth.routes";
@@ -17,7 +24,7 @@ app.use(
     credentials: true,
   })
 );
-app.use(cookieParser())
+app.use(cookieParser());
 app.use(express.json());
 app.use("/api/auth", AuthRouter);
 app.use("/api/airlines", AirlinesRouter);
