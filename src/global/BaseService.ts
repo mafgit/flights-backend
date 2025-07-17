@@ -1,4 +1,4 @@
-import pool from "../database/db_connection";
+import pool from "../database/db";
 
 type IField = Record<string, "string" | "boolean" | "number">;
 
@@ -10,7 +10,7 @@ export default abstract class BaseService<T> {
     this.fields = fields;
   }
 
-  async get_all(
+  async getAll(
     where?: Partial<T>,
     limit?: number,
     offset?: number,
@@ -49,7 +49,7 @@ export default abstract class BaseService<T> {
     return rows;
   }
 
-  async get_by_id(id: number) {
+  async getById(id: number) {
     let query = `select * from ${this.table} where id = $1`;
     const { rows } = await pool.query(query, [id]);
     return rows[0];
@@ -71,10 +71,23 @@ export default abstract class BaseService<T> {
 
     let i = 1;
     for (let key in data) {
-      if (key !== "id" && Object.keys(this.fields).includes(key)) {
+      if (
+        key !== "id" &&
+        key !== "password_hash" &&
+        Object.keys(this.fields).includes(key)
+      ) {
         values.push(data[key as keyof T]);
         queries.push(`${key} = $${i++}`);
-      }
+      } 
+      // else if (
+      //   key === "password" &&
+      //   typeof data[key] === "string" &&
+      //   this.table === "users"
+      // ) {
+      //   const hashedPassword = await hashPassword(data[key]);
+      //   queries.push(`password_hash = $${i++}`);
+      //   values.push(hashedPassword);
+      // }
     }
 
     query = query + " " + queries.join(", ") + ` where id = $${i} returning *`;

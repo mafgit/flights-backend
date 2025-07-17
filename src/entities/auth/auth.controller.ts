@@ -1,25 +1,25 @@
 import { Request, Response } from "express";
 import {
-  sign_and_set_token,
-  validate_login_body,
-  validate_signup_body,
+  signAndSetToken,
+  validateLoginBody,
+  validateSignupBody,
 } from "./auth.utils";
 import { AuthRequest } from "./auth.types";
 import AuthService from "./auth.service";
 
-const auth_service = new AuthService();
+const authService = new AuthService();
 
 export const login = async (req: Request, res: Response): Promise<void> => {
-  const parsed_body = validate_login_body(req.body);
-  const user = await auth_service.login(parsed_body);
-  await sign_and_set_token(user, res);
+  const parsedBody = validateLoginBody(req.body);
+  const user = await authService.login(parsedBody);
+  await signAndSetToken(user, res);
   res.json({ success: true, userId: user.id, role: user.role });
 };
 
 export const signup = async (req: Request, res: Response): Promise<void> => {
-  const parsed_body = validate_signup_body(req.body);
-  const user = await auth_service.signup(parsed_body);
-  await sign_and_set_token(user, res);
+  const parsedBody = validateSignupBody(req.body);
+  const user = await authService.signup(parsedBody);
+  await signAndSetToken(user, res);
   res.json({ userId: user.id, success: true, role: user.role });
 };
 

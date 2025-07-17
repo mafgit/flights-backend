@@ -4,7 +4,7 @@ import { AuthRequest } from "../../entities/auth/auth.types";
 import { IRole } from "../../entities/users/users.types";
 import createHttpError from "http-errors";
 
-export const verify_logged_in = (
+export const verifyLoggedIn = (
   req: AuthRequest,
   res: Response,
   next: NextFunction

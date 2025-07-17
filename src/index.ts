@@ -2,9 +2,10 @@ import express from "express";
 import dotenv from "dotenv";
 import { ZodError } from "zod";
 import cors from "cors";
+import cookieParser from 'cookie-parser'
 
 dotenv.config();
-import "./database/db_connection";
+import "./database/db";
 
 import AuthRouter from "./entities/auth/auth.routes";
 import AirlinesRouter from "./entities/airlines/airlines.routes";
@@ -16,9 +17,10 @@ app.use(
     credentials: true,
   })
 );
+app.use(cookieParser())
 app.use(express.json());
-app.use("/auth", AuthRouter);
-app.use("/airlines", AirlinesRouter);
+app.use("/api/auth", AuthRouter);
+app.use("/api/airlines", AirlinesRouter);
 
 // global error handler (it must be the last middleware)
 // express has a rule: if a middleware has 4 parameters, it is considered an error handler

@@ -3,27 +3,31 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { IUser } from "../users/users.types";
 import { ILogin, ISignup } from "./auth.types";
+import { hash } from "bcryptjs";
 
-export const validate_signup_body = (data: ISignup) => {
+export const validateSignupBody = (data: ISignup) => {
   const bodySchema = z.object({
     email: z.email(),
     password: z.string().min(3),
     full_name: z.string().min(3),
   });
-  const parsed_body = bodySchema.parse(data);
-  return parsed_body;
+  const parsedBody = bodySchema.parse(data);
+  return parsedBody;
 };
 
-export const validate_login_body = (data: ILogin) => {
+export const validateLoginBody = (data: ILogin) => {
   const bodySchema = z.object({
     email: z.email(),
     password: z.string().min(3),
   });
-  const parsed_body = bodySchema.parse(data);
-  return parsed_body;
+  const parsedBody = bodySchema.parse(data);
+  return parsedBody;
 };
 
-export const sign_and_set_token = async (user: Pick<IUser, "id" | "role">, res: Response) => {
+export const signAndSetToken = async (
+  user: Pick<IUser, "id" | "role">,
+  res: Response
+) => {
   const token = jwt.sign(
     { userId: user.id, role: user.role },
     process.env.JWT_SECRET!,
@@ -42,4 +46,8 @@ export const sign_and_set_token = async (user: Pick<IUser, "id" | "role">, res: 
   // throw createHttpError(400, "User already exists");
 
   return token;
+};
+
+export const hashPassword = async (password: string) => {
+  return await hash(password, process.env.SALT_ROUNDS || 10);
 };

@@ -1,5 +1,5 @@
 import { IAddAirline, IAirline } from "./airlines.types";
-import pool from "../../database/db_connection";
+import pool from "../../database/db";
 import BaseService from "../../global/BaseService";
 
 export default class AirlinesService extends BaseService<IAirline> {

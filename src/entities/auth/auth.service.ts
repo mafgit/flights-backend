@@ -1,7 +1,8 @@
-import pool from "../../database/db_connection";
+import pool from "../../database/db";
 import bcrypt from "bcryptjs";
 import createHttpError from "http-errors";
 import { ILogin, ISignup } from "./auth.types";
+import { hashPassword } from "./auth.utils";
 
 export default class AuthService {
   async login(data: ILogin) {
@@ -10,8 +11,8 @@ export default class AuthService {
     ]);
     if (rows.length === 0) throw createHttpError(400, "User not found");
     const user = rows[0];
-    const is_match = await bcrypt.compare(data.password, user.password_hash);
-    if (!is_match) throw createHttpError(400, "Invalid password");
+    const isMatch = await bcrypt.compare(data.password, user.password_hash);
+    if (!isMatch) throw createHttpError(400, "Invalid password");
     return user;
   }
 
@@ -23,11 +24,11 @@ export default class AuthService {
       throw createHttpError(400, "User already exists");
     }
 
-    const hashed_password = await bcrypt.hash(data.password!, 10);
+    const hashedPassword = await hashPassword(data.password)
 
     const results = await pool.query(
       "insert into users (full_name, email, password_hash) values ($1, $2, $3) returning *",
-      [data.full_name, data.email, hashed_password]
+      [data.full_name, data.email, hashedPassword]
     );
     const user = results.rows[0];
     return user;

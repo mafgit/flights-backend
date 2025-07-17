@@ -1,20 +1,20 @@
 import { Request, Response } from "express";
-import { IAirline } from "./airlines.types";
-import { validateAddBody, validateUpdateBody } from "./airlines.utils";
-import AirlinesService from "./airlines.service";
+import { IAirport } from "./airports.types";
+import { validateAddBody, validateUpdateBody } from "./airports.utils";
+import AirportsService from "./airports.service";
 import { getIdFromParams } from "../../global/utils";
 import BaseController from "../../global/BaseController";
 
-const airlinesService = new AirlinesService();
+const airportsService = new AirportsService();
 
-class AirlinesController extends BaseController<IAirline> {
+class AirportsController extends BaseController<IAirport> {
   constructor() {
-    super(airlinesService);
+    super(airportsService);
   }
 
   async add(req: Request, res: Response) {
     const parsedBody = validateAddBody(req.body);
-    const row = await airlinesService.add(parsedBody);
+    const row = await airportsService.add(parsedBody);
     res.status(201).json({ data: row });
   }
 
@@ -26,4 +26,4 @@ class AirlinesController extends BaseController<IAirline> {
   }
 }
 
-export default AirlinesController;
+export default AirportsController;

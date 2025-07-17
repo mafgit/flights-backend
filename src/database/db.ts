@@ -1,10 +1,6 @@
 // import {Pool} from "pg";
-import pkg from "pg";
-const { Pool } = pkg;
+import { Pool } from "pg";
 
-// console.log('\n\n\n',process.env.DATABASE_USERNAME);
-
-// const DATABASE_URL = process.env.DATABASE_URL;
 const pool = new Pool({
   // connectionString: DATABASE_URL
   user: process.env.DATABASE_USERNAME,

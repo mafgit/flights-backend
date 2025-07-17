@@ -8,12 +8,12 @@ const schema = z.object({
   logo_url: z.url(),
 });
 
-export const validate_add_body = (
+export const validateAddBody = (
   data: IAddAirline
 ) => {
   return schema.parse(data);
 };
 
-export const validate_update_body = (data: Partial<IAirline>) => {
+export const validateUpdateBody = (data: Partial<IAirline>) => {
   return schema.partial().parse(data);
 };

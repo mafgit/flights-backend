@@ -8,3 +8,5 @@ export interface IUser {
   password: string;
   role: IRole;
 }
+
+export type IAddUser = Pick<IUser, "full_name" | "email" | "password" | "role">;
