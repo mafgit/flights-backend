@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type IRole = "admin" | "user" | "super_admin";
 
 export interface IUser {
@@ -10,3 +12,12 @@ export interface IUser {
 }
 
 export type IAddUser = Pick<IUser, "full_name" | "email" | "password" | "role">;
+
+export const passwordSchema = z.string().min(3);
+
+export const schema = z.object({
+  full_name: z.string().min(3),
+  email: z.email(),
+  role: z.enum(["user", "admin", "super_admin"]),
+  password: passwordSchema,
+});

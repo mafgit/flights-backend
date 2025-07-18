@@ -2,9 +2,9 @@ import { IAddAirport, IAirport } from "./airports.types";
 import pool from "../../database/db";
 import BaseService from "../../global/BaseService";
 
-export default class AirportsService extends BaseService<IAirport> {
+export default class AirportsService extends BaseService<IAirport, IAddAirport> {
   constructor() {
-    super("airlines", {
+    super("airports", {
       id: "number",
       name: "string",
       code: "string",
@@ -18,7 +18,7 @@ export default class AirportsService extends BaseService<IAirport> {
 
   async add(data: IAddAirport) {
     const { rows } = await pool.query(
-      "insert into airlines (name, code, country, city, timezone, latitude, longitude) values ($1, $2, $3, $4, $5, $6, $7) returning *",
+      "insert into airports (name, code, country, city, timezone, latitude, longitude) values ($1, $2, $3, $4, $5, $6, $7) returning *",
       [
         data.name,
         data.code,

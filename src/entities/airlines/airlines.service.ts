@@ -2,7 +2,7 @@ import { IAddAirline, IAirline } from "./airlines.types";
 import pool from "../../database/db";
 import BaseService from "../../global/BaseService";
 
-export default class AirlinesService extends BaseService<IAirline> {
+export default class AirlinesService extends BaseService<IAirline, IAddAirline> {
   constructor() {
     super("airlines", {
       id: "number",

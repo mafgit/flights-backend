@@ -1,8 +1,9 @@
 import pool from "../database/db";
+import createHttpError from "http-errors";
 
 type IField = Record<string, "string" | "boolean" | "number">;
 
-export default abstract class BaseService<T> {
+export default abstract class BaseService<T, AddT> {
   table: string;
   fields: IField;
   constructor(table: string, fields: IField) {
@@ -27,10 +28,11 @@ export default abstract class BaseService<T> {
         if (where[key as keyof T] !== undefined) {
           if (key !== "id" && this.fields[key] === "string") {
             query += ` and ${key} ILIKE $${i++}`;
+            values.push("%" + where[key as keyof T] + "%");
           } else {
             query += ` and ${key} = $${i++}`;
+            values.push(where[key as keyof T]);
           }
-          values.push("%" + where[key as keyof T] + "%");
         }
       });
     }
@@ -63,7 +65,7 @@ export default abstract class BaseService<T> {
     return result.rowCount && result.rowCount > 0;
   }
 
-  async update(data: Partial<T>, id: number) {
+  async update(data: Partial<AddT>, id: number) {
     let query = `update ${this.table} set`;
 
     let values = [];
@@ -76,9 +78,9 @@ export default abstract class BaseService<T> {
         key !== "password_hash" &&
         Object.keys(this.fields).includes(key)
       ) {
-        values.push(data[key as keyof T]);
+        values.push(data[key]);
         queries.push(`${key} = $${i++}`);
-      } 
+      }
       // else if (
       //   key === "password" &&
       //   typeof data[key] === "string" &&
@@ -89,9 +91,11 @@ export default abstract class BaseService<T> {
       //   values.push(hashedPassword);
       // }
     }
-
+    if (queries.length === 0) throw createHttpError(400, "No fields provided");
     query = query + " " + queries.join(", ") + ` where id = $${i} returning *`;
     const { rows } = await pool.query(query, [...values, id]);
     return rows[0];
   }
+
+  abstract add(data: any): Promise<any>;
 }

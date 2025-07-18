@@ -6,7 +6,7 @@ import { validatePasswords } from "./users.utils";
 import { compare } from "bcryptjs";
 import createHttpError from "http-errors";
 
-export default class UsersService extends BaseService<IUser> {
+export default class UsersService extends BaseService<IUser, IAddUser> {
   constructor() {
     super("users", {
       id: "number",

@@ -1,28 +1,14 @@
-import { Request, Response } from "express";
-import { IAirline } from "./airlines.types";
-import { validateAddBody, validateUpdateBody } from "./airlines.utils";
+import { IAddAirline, IAirline, schema } from "./airlines.types";
 import AirlinesService from "./airlines.service";
-import { getIdFromParams } from "../../global/utils";
 import BaseController from "../../global/BaseController";
 
 const airlinesService = new AirlinesService();
 
-class AirlinesController extends BaseController<IAirline> {
+class AirlinesController extends BaseController<IAirline, IAddAirline> {
   constructor() {
-    super(airlinesService);
-  }
-
-  async add(req: Request, res: Response) {
-    const parsedBody = validateAddBody(req.body);
-    const row = await airlinesService.add(parsedBody);
-    res.status(201).json({ data: row });
-  }
-
-  async update(req: Request, res: Response) {
-    const parsedBody = validateUpdateBody(req.body);
-    const id = getIdFromParams(req);
-    const row = await this.service.update(parsedBody, id);
-    res.json({ data: row });
+    super(airlinesService, schema);
+    this.service = airlinesService;
+    this.addSchema = schema;
   }
 }
 
