@@ -5,7 +5,6 @@ import BaseService from "../../global/BaseService";
 export default class AirportsService extends BaseService<IAirport, IAddAirport> {
   constructor() {
     super("airports", {
-      id: "number",
       name: "string",
       code: "string",
       country: "string",

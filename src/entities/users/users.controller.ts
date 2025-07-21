@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { IAddUser, IUser, schema } from "./users.types";
+import { IAddUser, IUser, addSchema } from "./users.types";
 import { validatePasswords } from "./users.utils";
 import UsersService from "./users.service";
 import { getIdFromParams } from "../../global/utils";
@@ -11,9 +11,9 @@ class UsersController extends BaseController<IUser, IAddUser> {
   service: UsersService; // overriding the base type, otherwise it would give error on using this.service.updatePassword
 
   constructor() {
-    super(usersService, schema);
+    super(usersService, addSchema);
     this.service = usersService;
-    this.addSchema = schema;
+    this.addSchema = addSchema;
   }
 
   updatePassword = async (req: Request, res: Response) => {

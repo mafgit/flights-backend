@@ -9,7 +9,6 @@ import createHttpError from "http-errors";
 export default class UsersService extends BaseService<IUser, IAddUser> {
   constructor() {
     super("users", {
-      id: "number",
       full_name: "string",
       email: "string",
       password_hash: "string",

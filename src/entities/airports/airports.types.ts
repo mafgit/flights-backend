@@ -16,7 +16,7 @@ export type IAddAirport = Pick<
   "name" | "code" | "country" | "city" | "timezone" | "latitude" | "longitude"
 >;
 
-export const schema = z.object({
+export const addSchema = z.object({
   name: z.string().min(3),
   code: z.string().min(2),
   country: z.string().min(2),

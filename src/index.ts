@@ -18,6 +18,7 @@ import AuthRouter from "./entities/auth/auth.routes";
 import AirlinesRouter from "./entities/airlines/airlines.routes";
 
 const app = express();
+app.set('trust proxy', true)
 app.use(
   cors({
     origin: "http://localhost:3000",

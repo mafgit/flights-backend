@@ -54,11 +54,24 @@ create table flights (
 
 create type seat_class_enum as enum ('economy', 'premium', 'business', 'first');
 
+create table flight_fares (
+	id SERIAL PRIMARY KEY,
+	flight_id INT REFERENCES flights(id),
+	base_amount DECIMAL NOT NULL,
+	surcharge_amount DECIMAL NOT NULL,
+	tax_amount DECIMAL NOT NULL,
+	total_amount DECIMAL NOT NULL,
+	seat_class seat_class_enum NOT NULL,
+	UNIQUE(flight_id, seat_class)
+)
+
+
 create table seats (
 	id SERIAL PRIMARY KEY,
 	flight_id INT REFERENCES flights(id),
-	seat_number VARCHAR(30) NOT NULL,
+	seat_number VARCHAR(15) NOT NULL,
 	seat_class seat_class_enum NOT NULL,
+	is_available BOOLEAN DEFAULT TRUE,
 	UNIQUE (flight_id, seat_number)
 );
 
@@ -66,9 +79,9 @@ create type gender_enum as enum ('m', 'f', 'x');
 
 create table passengers (
 	id SERIAL PRIMARY KEY,
-	full_name VARCHAR(100) NOT NULL,
+	full_name VARCHAR(50) NOT NULL,
 	gender gender_enum NOT NULL,
-	passport_number VARCHAR(30) NOT NULL,
+	passport_number VARCHAR(20) NOT NULL,
 	nationality VARCHAR(30) NOT NULL,
 	date_of_birth DATE NOT NULL
 );
@@ -79,10 +92,13 @@ create type booking_status as enum ('pending', 'cancelled', 'delayed', 'complete
 create table bookings (
 	id SERIAL PRIMARY KEY,
 	user_id INT REFERENCES users(id),
-	booking_code VARCHAR(100) UNIQUE NOT NULL,
-	total_price DECIMAL NOT NULL,
+	-- booking_code VARCHAR(100) UNIQUE NOT NULL,
+	base_amount DECIMAL NOT NULL,
+	surcharge_amount DECIMAL NOT NULL,
+	tax_amount DECIMAL NOT NULL,
+	total_amount DECIMAL NOT NULL,
 	currency VARCHAR(30) NOT NULL,
-	status booking_status NOT NULL,	
+	status booking_status DEFAULT 'pending',	
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -95,18 +111,24 @@ create table booking_segments (
 	passenger_id INT REFERENCES passengers(id),
 	flight_id INT REFERENCES flights(id),
 	seat_id INT REFERENCES seats(id),
-	status segment_status NOT NULL
+	base_amount DECIMAL NOT NULL,
+	surcharge_amount DECIMAL NOT NULL,
+	tax_amount DECIMAL NOT NULL,
+	total_amount DECIMAL NOT NULL,
+	status segment_status DEFAULT 'confirmed'
 );
 
 create type payment_status as enum ('paid', 'pending', 'failed', 'refunded');
+create type payment_method_enum as enum ('cash', 'credit_card', 'debit_card', 'wallet', 'bank_transfer');
 
 create table payments (
 	id SERIAL PRIMARY KEY,
 	user_id INT REFERENCES users(id),
 	booking_id INT REFERENCES bookings(id),
-	total_price DECIMAL NOT NULL,
+	total_amount DECIMAL NOT NULL,
 	currency VARCHAR(30) NOT NULL,
-	status payment_status NOT NULL,
+	method payment_method_enum NOT NULL,
+	status payment_status DEFAULT 'pending',
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

@@ -5,10 +5,15 @@ type IField = Record<string, "string" | "boolean" | "number">;
 
 export default abstract class BaseService<T, AddT> {
   table: string;
-  fields: IField;
-  constructor(table: string, fields: IField) {
+  queryFields: IField;
+  constructor(table: string, queryFields: IField) {
     this.table = table;
-    this.fields = fields;
+    this.queryFields = {
+      ...queryFields,
+      id: "number",
+      created_at: "string",
+      updated_at: "string",
+    };
   }
 
   async getAll(
@@ -26,7 +31,7 @@ export default abstract class BaseService<T, AddT> {
     if (where) {
       Object.keys(where).forEach((key) => {
         if (where[key as keyof T] !== undefined) {
-          if (key !== "id" && this.fields[key] === "string") {
+          if (key !== "id" && this.queryFields[key] === "string") {
             query += ` and ${key} ILIKE $${i++}`;
             values.push("%" + where[key as keyof T] + "%");
           } else {
@@ -43,7 +48,7 @@ export default abstract class BaseService<T, AddT> {
       values.push(offset ?? 0);
     }
 
-    if (orderBy && Object.keys(this.fields).includes(orderBy)) {
+    if (orderBy && Object.keys(this.queryFields).includes(orderBy)) {
       query += ` order by ${orderBy} ${asc ? "asc" : "desc"}`;
     }
 
@@ -65,7 +70,7 @@ export default abstract class BaseService<T, AddT> {
     return result.rowCount && result.rowCount > 0;
   }
 
-  async update(data: Partial<AddT>, id: number) {
+  async update(data: Partial<T>, id: number) {
     let query = `update ${this.table} set`;
 
     let values = [];
@@ -76,7 +81,7 @@ export default abstract class BaseService<T, AddT> {
       if (
         key !== "id" &&
         key !== "password_hash" &&
-        Object.keys(this.fields).includes(key)
+        Object.keys(this.queryFields).includes(key)
       ) {
         values.push(data[key]);
         queries.push(`${key} = $${i++}`);

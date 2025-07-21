@@ -1,4 +1,4 @@
-import { IAddAirport, IAirport, schema } from "./airports.types";
+import { IAddAirport, IAirport, addSchema } from "./airports.types";
 import AirportsService from "./airports.service";
 import BaseController from "../../global/BaseController";
 
@@ -6,9 +6,9 @@ const airportsService = new AirportsService();
 
 class AirportsController extends BaseController<IAirport, IAddAirport> {
   constructor() {
-    super(airportsService, schema);
+    super(airportsService, addSchema);
     this.service = airportsService
-    this.addSchema = schema
+    this.addSchema = addSchema
   }
 }
 

@@ -23,7 +23,7 @@ export default abstract class BaseController<T, AddT> {
   };
 
   update = async (req: Request, res: Response) => {
-    const parsedBody = validateUpdateBody<AddT>(this.addSchema, req.body);
+    const parsedBody = validateUpdateBody<T>(this.addSchema, req.body);
     const id = getIdFromParams(req);
     const row = await this.service.update(parsedBody, id);
     res.json({ data: row });

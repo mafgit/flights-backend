@@ -1,14 +1,15 @@
-import { IAddAirline, IAirline, schema } from "./airlines.types";
+import { IAddAirline, IAirline, addSchema } from "./airlines.types";
 import AirlinesService from "./airlines.service";
 import BaseController from "../../global/BaseController";
 
 const airlinesService = new AirlinesService();
 
 class AirlinesController extends BaseController<IAirline, IAddAirline> {
+  declare service: AirlinesService;
   constructor() {
-    super(airlinesService, schema);
+    super(airlinesService, addSchema);
     this.service = airlinesService;
-    this.addSchema = schema;
+    this.addSchema = addSchema;
   }
 }
 
