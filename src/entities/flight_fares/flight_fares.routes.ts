@@ -1,31 +1,31 @@
 import { Router } from "express";
 import { verifyLoggedIn } from "../../global/middlewares/verifyLoggedIn";
 import { verifyAdmin } from "../../global/middlewares/verifyAdmin";
-import AirlinesController from "./airlines.controller";
+import FlightFaresController from "./flight_fares.controller";
 import asyncHandler from "express-async-handler";
 
-const airlinesController = new AirlinesController();
+const flightFaresController = new FlightFaresController();
 const router = Router();
 
-router.get("/", asyncHandler(airlinesController.getAll));
+router.get("/", asyncHandler(flightFaresController.getAll));
 router.post(
   "/add",
   verifyLoggedIn,
   verifyAdmin,
-  asyncHandler(airlinesController.add)
-); // todo?: verify that it is the correct admin that is adding to airline (if i add airline admins)
+  asyncHandler(flightFaresController.add)
+);
 router.delete(
   "/delete/:id",
   verifyLoggedIn,
   verifyAdmin,
-  asyncHandler(airlinesController.delete)
+  asyncHandler(flightFaresController.delete)
 );
 router.put(
   "/update/:id",
   verifyLoggedIn,
   verifyAdmin,
-  asyncHandler(airlinesController.update)
+  asyncHandler(flightFaresController.update)
 );
-router.get("/:id", asyncHandler(airlinesController.getById));
+router.get("/:id", asyncHandler(flightFaresController.getById));
 
 export default router;

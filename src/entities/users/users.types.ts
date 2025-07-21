@@ -17,9 +17,11 @@ export type IAddUser = Pick<IUser, "full_name" | "email" | "password" | "role">;
 
 export const passwordSchema = z.string().min(3);
 
+export const roleSchema = z.enum(["user", "admin", "super_admin"]);
+
 export const addSchema = z.object({
   full_name: z.string().min(3),
   email: z.email(),
-  role: z.enum(["user", "admin", "super_admin"]),
+  role: roleSchema,
   password: passwordSchema,
 });

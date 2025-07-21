@@ -5,6 +5,7 @@ import BaseController from "../../global/BaseController";
 const airportsService = new AirportsService();
 
 class AirportsController extends BaseController<IAirport, IAddAirport> {
+  declare service: AirportsService
   constructor() {
     super(airportsService, addSchema);
     this.service = airportsService

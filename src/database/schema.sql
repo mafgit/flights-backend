@@ -64,6 +64,7 @@ create table flight_fares (
 	seat_class seat_class_enum NOT NULL,
 	UNIQUE(flight_id, seat_class)
 )
+-- todo: adult etc fields
 
 
 create table seats (

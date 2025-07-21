@@ -30,11 +30,21 @@ export interface IBooking {
   ip_address: string;
 }
 
-export type IAddBooking = Pick<IBooking, "user_id" | "segments" | "passengers" | 'ip_address'>;
+export type IAddBooking = Pick<
+  IBooking,
+  "user_id" | "segments" | "passengers" | "ip_address"
+>;
+
+export const seatClassSchema = z.enum([
+  "economy",
+  "business",
+  "first",
+  "premium",
+]);
 
 const segmentSchema = z.object({
   flight_id: z.number().int().positive(),
-  seat_class: z.enum(["economy", "business", "first", "premium"]),
+  seat_class: seatClassSchema,
 });
 
 const passengerSchema = z.object({
@@ -49,7 +59,7 @@ export const addSchema = z.object({
   user_id: z.number().int().positive(),
   segments: z.array(segmentSchema).min(1),
   passengers: z.array(passengerSchema).min(1),
-  ip_address: z.string().min(2) // todo: z.ipv4() etc
+  ip_address: z.string().min(2), // todo: z.ipv4() etc
   // currency: z.string().min(2),
   // total_amount: z.number().positive(),
   // booking_code: z.string().min(2),

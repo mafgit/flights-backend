@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { verifyLoggedIn } from "../../global/middlewares/verifyLoggedIn";
+import {
+  verifyCorrectUserOrAdmin,
+  verifyLoggedIn,
+} from "../../global/middlewares/verifyLoggedIn";
 import { verifyAdmin } from "../../global/middlewares/verifyAdmin";
 import PaymentsController from "./payments.controller";
 import asyncHandler from "express-async-handler";
@@ -7,11 +10,22 @@ import asyncHandler from "express-async-handler";
 const paymentsController = new PaymentsController();
 const router = Router();
 
-router.get("/", asyncHandler(paymentsController.getAll));
+router.get(
+  "/",
+  verifyLoggedIn,
+  verifyAdmin,
+  asyncHandler(paymentsController.getAll)
+);
 router.post(
   "/add",
   verifyLoggedIn,
   verifyAdmin,
+  asyncHandler(paymentsController.add)
+);
+router.post(
+  "/pay",
+  verifyLoggedIn,
+  verifyCorrectUserOrAdmin("payments"),
   asyncHandler(paymentsController.add)
 );
 router.delete(
@@ -26,6 +40,11 @@ router.put(
   verifyAdmin,
   asyncHandler(paymentsController.update)
 );
-router.get("/:id", asyncHandler(paymentsController.getById));
+router.get(
+  "/:id",
+  verifyLoggedIn,
+  verifyCorrectUserOrAdmin("payments"),
+  asyncHandler(paymentsController.getById)
+);
 
 export default router;

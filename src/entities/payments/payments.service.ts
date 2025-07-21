@@ -56,7 +56,7 @@ export default class PaymentsService extends BaseService<
         throw createHttpError(400, "Payment has already failed too many times");
 
       await this.add({ ...paidPayment, status: "paid" });
-      // todo: return extra amount
+      // todo?: return extra amount
 
       const { rows: updatedBookings } = await pool.query(
         "update bookings set status = 'confirmed' where id = $1 returning *",

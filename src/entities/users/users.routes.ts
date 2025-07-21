@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { verifyLoggedIn } from "../../global/middlewares/verifyLoggedIn";
+import {
+  verifyCorrectUserOrAdmin,
+  verifyLoggedIn,
+} from "../../global/middlewares/verifyLoggedIn";
 import { verifyAdmin } from "../../global/middlewares/verifyAdmin";
 import UsersController from "./users.controller";
 import asyncHandler from "express-async-handler";
@@ -7,7 +10,12 @@ import asyncHandler from "express-async-handler";
 const usersController = new UsersController();
 const router = Router();
 
-router.get("/", asyncHandler(usersController.getAll));
+router.get(
+  "/",
+  verifyLoggedIn,
+  verifyAdmin,
+  asyncHandler(usersController.getAll)
+);
 router.post(
   "/add",
   verifyLoggedIn,
@@ -23,17 +31,21 @@ router.delete(
 router.put(
   "/update/:id",
   verifyLoggedIn,
-  verifyAdmin,
+  verifyCorrectUserOrAdmin("users"),
   asyncHandler(usersController.update)
 );
 router.put(
   "/update-password/:id",
   verifyLoggedIn,
-  verifyAdmin,
+  verifyCorrectUserOrAdmin("users"),
   asyncHandler(usersController.updatePassword)
 );
-// todo: make separation logic so that only admin can update role, but user can update other fields
-// todo: verify that it is the same user who is updating and not someone else
+router.put(
+  "/update-role/:id",
+  verifyLoggedIn,
+  verifyAdmin,
+  asyncHandler(usersController.updateRole)
+);
 router.get("/:id", asyncHandler(usersController.getById));
 
 export default router;

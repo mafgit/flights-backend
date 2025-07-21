@@ -64,7 +64,7 @@ export default class BookingsService extends BaseService<
       throw createHttpError(
         400,
         "No seat available for this class in this flight"
-      ); // todo: maybe add manual seat selection
+      ); // todo?: add manual seat selection
     }
     return seatRows[0].id;
   }
@@ -241,5 +241,5 @@ export default class BookingsService extends BaseService<
     return returnObj;
   }
 
-  // async cancel() {}
+  // todo: async cancel() {}
 }

@@ -1,31 +1,31 @@
 import { Router } from "express";
 import { verifyLoggedIn } from "../../global/middlewares/verifyLoggedIn";
 import { verifyAdmin } from "../../global/middlewares/verifyAdmin";
-import AircraftsController from "./aircrafts.controller";
+import FlightsController from "./flights.controller";
 import asyncHandler from "express-async-handler";
 
-const aircraftsController = new AircraftsController();
+const flightsController = new FlightsController();
 const router = Router();
 
-router.get("/", asyncHandler(aircraftsController.getAll));
+router.get("/", asyncHandler(flightsController.getAll));
 router.post(
   "/add",
   verifyLoggedIn,
   verifyAdmin,
-  asyncHandler(aircraftsController.add)
+  asyncHandler(flightsController.add)
 );
 router.delete(
   "/delete/:id",
   verifyLoggedIn,
   verifyAdmin,
-  asyncHandler(aircraftsController.delete)
+  asyncHandler(flightsController.delete)
 );
 router.put(
   "/update/:id",
   verifyLoggedIn,
   verifyAdmin,
-  asyncHandler(aircraftsController.update)
+  asyncHandler(flightsController.update)
 );
-router.get("/:id", asyncHandler(aircraftsController.getById));
+router.get("/:id", asyncHandler(flightsController.getById));
 
 export default router;

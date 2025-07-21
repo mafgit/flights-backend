@@ -76,11 +76,12 @@ export default abstract class BaseService<T, AddT> {
     let values = [];
     let queries = [];
 
+    const unupdatableFields = ["id", "password_hash", "role"]; // some of them have separate routes for that
+
     let i = 1;
     for (let key in data) {
       if (
-        key !== "id" &&
-        key !== "password_hash" &&
+        !unupdatableFields.includes(key) &&
         Object.keys(this.queryFields).includes(key)
       ) {
         values.push(data[key]);
