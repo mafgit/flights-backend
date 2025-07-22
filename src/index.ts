@@ -16,9 +16,17 @@ import "./database/db";
 
 import AuthRouter from "./entities/auth/auth.routes";
 import AirlinesRouter from "./entities/airlines/airlines.routes";
+import AircraftsRouter from "./entities/aircrafts/aircrafts.routes";
+import BookingsRouter from "./entities/bookings/bookings.routes";
+import AirportsRouter from "./entities/airports/airports.routes";
+import FlightsRouter from "./entities/flights/flights.routes";
+import FlightFaresRouter from "./entities/flight_fares/flight_fares.routes";
+import UsersRouter from "./entities/users/users.routes";
+import SeatsRouter from "./entities/seats/seats.routes";
+import PaymentsRouter from "./entities/payments/payments.routes";
 
 const app = express();
-app.set('trust proxy', true)
+app.set("trust proxy", true);
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -29,6 +37,14 @@ app.use(cookieParser());
 app.use(express.json());
 app.use("/api/auth", AuthRouter);
 app.use("/api/airlines", AirlinesRouter);
+app.use("/api/aircrafts", AircraftsRouter);
+app.use("/api/bookings", BookingsRouter);
+app.use("/api/flight-fares", FlightFaresRouter);
+app.use("/api/flights", FlightsRouter);
+app.use("/api/airports", AirportsRouter);
+app.use("/api/payments", PaymentsRouter);
+app.use("/api/seats", SeatsRouter);
+app.use("/api/users", UsersRouter);
 
 // global error handler (it must be the last middleware)
 // express has a rule: if a middleware has 4 parameters, it is considered an error handler

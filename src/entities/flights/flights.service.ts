@@ -82,6 +82,12 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
     if (minLength === 0)
       throw createHttpError(400, "No flights found for your exact search");
 
+    // [1,2,3]
+    // [4,5] (2)
+    // [6,7,8]
+
+    // 1,4,6
+    // 2,5,7
     const combinations = [];
     for (let i = 0; i < minLength; i++) {
       for (let j = 0; j < results.length; j++) {
