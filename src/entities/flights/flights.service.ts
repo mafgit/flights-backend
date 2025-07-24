@@ -42,6 +42,7 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
   async searchFlights(flights: ISearchFlight[]) {
     const results: ISearchResult[][] = [];
     let minLength = Number.MAX_SAFE_INTEGER;
+    console.log("-------------------------------------------" + flights.length);
 
     for (let i = 0; i < flights.length; i++) {
       const data = flights[i];
@@ -87,6 +88,7 @@ where s.seat_class = $4 and s.is_available = true
 	and f.status = 'scheduled'
 	and departure_airport_id = $5 and arrival_airport_id = $6
 	and f.departure_time >= $7 and f.departure_time <= $8
+  and ff.seat_class = s.seat_class
 group by f.id, ap1.name, ap2.name, al.name, ap1.timezone, ap2.timezone, al.logo_url, ap1.city, ap2.city,
   ff.adult_base_amount, ff.tax_amount, ff.surcharge_amount, ff.child_base_amount, ff.infant_base_amount
 order by segment_total_amount asc, duration asc
@@ -106,6 +108,8 @@ limit 10;
       const maxDepartureTime = new Date(minDepartureTime);
       maxDepartureTime.setDate(maxDepartureTime.getDate() + 1);
 
+      console.log('sending: ', data.passengers);
+      
       const { rows } = await pool.query(query, [
         data.passengers.adults,
         data.passengers.children,
@@ -127,6 +131,8 @@ limit 10;
 
       if (rows.length < minLength) minLength = rows.length;
     }
+
+    // console.log("results", results);
 
     if (minLength === 0) return [];
 

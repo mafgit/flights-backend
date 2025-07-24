@@ -1,15 +1,4 @@
-
-truncate table airports;
-truncate table airlines;
-truncate table users;
-truncate table passengers;
-truncate table flights;
-truncate table flight_fares;
-truncate table seats;
-truncate table aircrafts;
-truncate table bookings;
-truncate table booking_segments;
-truncate table payments;
+truncate table airports, airlines, users, passengers, flights, flight_fares, seats, aircrafts, bookings, booking_segments, payments;
 
 INSERT INTO airports (name, code, city, country, timezone, latitude, longitude) VALUES
 ('Jinnah International Airport', 'KHI', 'Karachi', 'Pakistan', 'Asia/Karachi', 24.9065, 67.1608),
@@ -19,11 +8,11 @@ INSERT INTO airports (name, code, city, country, timezone, latitude, longitude) 
 ('John F. Kennedy International Airport', 'JFK', 'New York', 'USA', 'America/New_York', 40.6413, -73.7781);
 
 INSERT INTO airlines (name, code, country, logo_url) VALUES
-('Pakistan International Airlines', 'PK', 'Pakistan', NULL),
-('Emirates', 'EK', 'UAE', NULL),
-('British Airways', 'BA', 'UK', NULL),
-('Qatar Airways', 'QR', 'Qatar', NULL),
-('Turkish Airlines', 'TK', 'Turkey', NULL);
+('Pakistan International Airlines', 'PK', 'Pakistan', '/airline_logos/pia.webp'),
+('Emirates', 'EK', 'UAE', '/airline_logos/emirates.svg'),
+('British Airways', 'BA', 'UK', '/airline_logos/british_airways.jpeg'),
+('Qatar Airways', 'QR', 'Qatar', '/airline_logos/qatar.png'),
+('Turkish Airlines', 'TK', 'Turkey', '/airline_logos/turkish.png');
 
 INSERT INTO aircrafts (model, manufacturer, capacity) VALUES
 ('Boeing 777-300ER', 'Boeing', 300),
@@ -85,7 +74,7 @@ INSERT INTO flight_fares (flight_id, seat_class, adult_base_amount, child_base_a
 (12, 'economy', 450, 380, 120, 70, 50),
 (12, 'business', 850, 720, 220, 110, 80),
 (13, 'economy', 490, 420, 140, 75, 55),
-(13, 'business', 890, 760, 250, 120, 90);
+(13, 'business', 890, 760, 250, 120, 90),
 (14, 'economy', 300, 250, 90, 55, 35),
 (14, 'business', 600, 500, 180, 85, 60),
 (15, 'economy', 380, 320, 100, 65, 45),
@@ -154,7 +143,7 @@ INSERT INTO seats (flight_id, seat_number, seat_class) VALUES
 (13, '1A', 'economy'),
 (13, '1B', 'economy'),
 (13, '1C', 'business'),
-(13, '1D', 'business');
+(13, '1D', 'business'),
 (14, '1A', 'economy'),
 (14, '1B', 'economy'),
 (14, '2A', 'business'),
