@@ -13,7 +13,7 @@ const pool = new Pool({
 pool
   .connect()
   .then(async (client) => {
-    await pool.query("set time zone 'Asia/Karachi'");
+    // await pool.query("set time zone 'Asia/Karachi'");
     console.log("Connected to PostgreSQL");
     client.release();
   })

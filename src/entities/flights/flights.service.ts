@@ -1,4 +1,9 @@
-import { IAddFlight, IFlight, ISearchFlight } from "./flights.types";
+import {
+  IAddFlight,
+  IFlight,
+  ISearchFlight,
+  ISearchResult,
+} from "./flights.types";
 import pool from "../../database/db";
 import BaseService from "../../global/BaseService";
 import createHttpError from "http-errors";
@@ -35,13 +40,16 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
   }
 
   async searchFlights(flights: ISearchFlight[]) {
-    const results = [];
+    const results: ISearchResult[][] = [];
     let minLength = Number.MAX_SAFE_INTEGER;
 
     for (let i = 0; i < flights.length; i++) {
       const data = flights[i];
 
-      const totalPeople = data.adults + data.infants + data.children;
+      const totalPeople =
+        data.passengers.adults +
+        data.passengers.infants +
+        data.passengers.children;
       if (totalPeople === 0) {
         throw createHttpError(400, "There must be at least one passenger");
       }
@@ -49,38 +57,78 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
         throw createHttpError(400, "More than 10 passengers are not allowed");
       }
       if (
-        data.adults !== Math.floor(data.adults) ||
-        data.children !== Math.floor(data.children) ||
-        data.infants !== Math.floor(data.infants)
+        data.passengers.adults !== Math.floor(data.passengers.adults) ||
+        data.passengers.children !== Math.floor(data.passengers.children) ||
+        data.passengers.infants !== Math.floor(data.passengers.infants)
       ) {
         throw createHttpError(400, "Invalid number of passengers");
       }
 
-      let query = `select *, SUM(total_amount * (${data.adults} + ${data.children} + ${data.infants})) as total, 
-                      EXTRACT(EPOCH FROM (arrival_time - departure_time)) / 3600 as duration from flights 
-                      join flight_fares on flight_fares.flight_id = flights.id
-                      where arrival_airport_id = $1 and departure_airport_id = $2 and seat_class = $3 
-                      and status = 'scheduled' and arrival_time >= $4 and arrival_time <= $5 and departure_time >= $6 
-                      and departure_time <= $7 order by total asc, duration asc limit 10`;
+      let query = `
+select f.id, f.departure_airport_id, f.arrival_airport_id, f.airline_id, f.arrival_time, f.departure_time,
+	ap1.name as departure_airport_name, ap1.city as departure_city,
+	ap2.name as arrival_airport_name, ap2.city as arrival_city,
+	al.name as airline_name, al.logo_url as airline_logo_url,
+	ap1.timezone as departure_timezone,
+	ap2.timezone as arrival_timezone,
+	round(extract(epoch from (f.arrival_time - f.departure_time)) / 3600, 1) as duration,
+	(
+		$1 * (ff.adult_base_amount + ff.tax_amount + ff.surcharge_amount)
+		+ $2 * (ff.child_base_amount + ff.tax_amount + ff.surcharge_amount)
+		+ $3 * (ff.infant_base_amount + ff.tax_amount + ff.surcharge_amount)
+	) as segment_total_amount
+from flights f
+join airports ap1 on f.departure_airport_id = ap1.id
+join airports ap2 on f.arrival_airport_id = ap2.id
+join airlines al on f.airline_id = al.id
+join flight_fares ff on ff.flight_id = f.id
+join seats s on s.flight_id = f.id
+where s.seat_class = $4 and s.is_available = true
+	and f.status = 'scheduled'
+	and departure_airport_id = $5 and arrival_airport_id = $6
+	and f.departure_time >= $7 and f.departure_time <= $8
+group by f.id, ap1.name, ap2.name, al.name, ap1.timezone, ap2.timezone, al.logo_url, ap1.city, ap2.city,
+  ff.adult_base_amount, ff.tax_amount, ff.surcharge_amount, ff.child_base_amount, ff.infant_base_amount
+order by segment_total_amount asc, duration asc
+limit 10;
+      `;
 
-      // todo?: more complex logic for adult/children/infant
+      const minDepartureTime = new Date(
+        data.departure_time.year,
+        data.departure_time.month - 1,
+        data.departure_time.day,
+        0,
+        0,
+        0,
+        0
+      );
+
+      const maxDepartureTime = new Date(minDepartureTime);
+      maxDepartureTime.setDate(maxDepartureTime.getDate() + 1);
 
       const { rows } = await pool.query(query, [
-        data.arrival_airport_id,
-        data.departure_airport_id,
+        data.passengers.adults,
+        data.passengers.children,
+        data.passengers.infants,
         data.seat_class,
-        data.arrival_time,
-        data.min_departure_time,
-        data.max_departure_time,
-      ]); // todo: check
+        data.departure_airport_id,
+        data.arrival_airport_id,
+        minDepartureTime.toISOString(),
+        maxDepartureTime.toISOString(),
+      ]);
 
-      results.push(rows);
+      results.push(
+        rows.map((r) => ({
+          ...r,
+          segment_total_amount: parseFloat(r.segment_total_amount),
+          duration: parseFloat(r.duration),
+        }))
+      );
 
       if (rows.length < minLength) minLength = rows.length;
     }
 
-    if (minLength === 0)
-      throw createHttpError(400, "No flights found for your exact search");
+    if (minLength === 0) return [];
 
     // [1,2,3]
     // [4,5] (2)
@@ -88,10 +136,11 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
 
     // 1,4,6
     // 2,5,7
-    const combinations = [];
+    const combinations: ISearchResult[][] = [];
     for (let i = 0; i < minLength; i++) {
+      combinations[i] = [];
       for (let j = 0; j < results.length; j++) {
-        combinations.push(results[j][i]);
+        combinations[i].push(results[j][i]);
       }
     }
 

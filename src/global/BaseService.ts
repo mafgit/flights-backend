@@ -1,3 +1,4 @@
+import { Pool, PoolClient } from "pg";
 import pool from "../database/db";
 import createHttpError from "http-errors";
 
@@ -53,6 +54,8 @@ export default abstract class BaseService<T, AddT> {
     }
 
     const { rows } = await pool.query(query, values);
+    console.log(rows);
+
     return rows;
   }
 
@@ -103,5 +106,5 @@ export default abstract class BaseService<T, AddT> {
     return rows[0];
   }
 
-  abstract add(data: any): Promise<any>;
+  // abstract add(data: any, client?: PoolClient | Pool): Promise<any>;
 }

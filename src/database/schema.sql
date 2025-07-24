@@ -42,10 +42,10 @@ create type flight_status as enum ('scheduled', 'cancelled', 'delayed', 'complet
 create table flights (
 	id SERIAL PRIMARY KEY,
 	flight_number VARCHAR(50) NOT NULL,
-	airline_id INT REFERENCES airlines(id) NOT NULL,
-	aircraft_id INT REFERENCES aircrafts(id) NOT NULL,
-	departure_airport_id INT REFERENCES airports(id) NOT NULL,
-	arrival_airport_id INT REFERENCES airports(id) NOT NULL,
+	airline_id INT REFERENCES airlines(id) NOT NULL on delete cascade,
+	aircraft_id INT REFERENCES aircrafts(id) NOT NULL on delete cascade,
+	departure_airport_id INT REFERENCES airports(id) NOT NULL on delete cascade,
+	arrival_airport_id INT REFERENCES airports(id) NOT NULL on delete cascade,
 	status flight_status NOT NULL,
 	arrival_time TIMESTAMP WITH TIME ZONE NOT NULL,
 	departure_time TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -56,20 +56,20 @@ create type seat_class_enum as enum ('economy', 'premium', 'business', 'first');
 
 create table flight_fares (
 	id SERIAL PRIMARY KEY,
-	flight_id INT REFERENCES flights(id),
-	base_amount DECIMAL NOT NULL,
+	flight_id INT REFERENCES flights(id) on delete cascade,
+	adult_base_amount DECIMAL NOT NULL,
+	child_base_amount DECIMAL NOT NULL,
+	infant_base_amount DECIMAL NOT NULL,
 	surcharge_amount DECIMAL NOT NULL,
 	tax_amount DECIMAL NOT NULL,
-	total_amount DECIMAL NOT NULL,
 	seat_class seat_class_enum NOT NULL,
 	UNIQUE(flight_id, seat_class)
-)
--- todo: adult etc fields
+);
 
 
 create table seats (
 	id SERIAL PRIMARY KEY,
-	flight_id INT REFERENCES flights(id),
+	flight_id INT REFERENCES flights(id) on delete cascade,
 	seat_number VARCHAR(15) NOT NULL,
 	seat_class seat_class_enum NOT NULL,
 	is_available BOOLEAN DEFAULT TRUE,
@@ -92,7 +92,7 @@ create type booking_status as enum ('pending', 'cancelled', 'delayed', 'complete
 
 create table bookings (
 	id SERIAL PRIMARY KEY,
-	user_id INT REFERENCES users(id),
+	user_id INT REFERENCES users(id) on delete cascade,
 	-- booking_code VARCHAR(100) UNIQUE NOT NULL,
 	base_amount DECIMAL NOT NULL,
 	surcharge_amount DECIMAL NOT NULL,
@@ -108,10 +108,10 @@ create type segment_status as enum ('confirmed', 'cancelled', 'flown', 'no_show'
 
 create table booking_segments (
 	id SERIAL PRIMARY KEY,
-	booking_id INT REFERENCES bookings(id),
-	passenger_id INT REFERENCES passengers(id),
-	flight_id INT REFERENCES flights(id),
-	seat_id INT REFERENCES seats(id),
+	booking_id INT REFERENCES bookings(id) on delete cascade,
+	passenger_id INT REFERENCES passengers(id) on delete cascade,
+	flight_id INT REFERENCES flights(id) on delete cascade,
+	seat_id INT REFERENCES seats(id) on delete cascade,
 	base_amount DECIMAL NOT NULL,
 	surcharge_amount DECIMAL NOT NULL,
 	tax_amount DECIMAL NOT NULL,
@@ -124,8 +124,8 @@ create type payment_method_enum as enum ('cash', 'credit_card', 'debit_card', 'w
 
 create table payments (
 	id SERIAL PRIMARY KEY,
-	user_id INT REFERENCES users(id),
-	booking_id INT REFERENCES bookings(id),
+	user_id INT REFERENCES users(id) on delete cascade,
+	booking_id INT REFERENCES bookings(id) on delete cascade,
 	total_amount DECIMAL NOT NULL,
 	currency VARCHAR(30) NOT NULL,
 	method payment_method_enum NOT NULL,

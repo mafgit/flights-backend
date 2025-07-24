@@ -20,16 +20,28 @@ export type IAddFlight = Omit<IFlight, "id">;
 //   IFlight,
 //   "id" | "status" | "airline_id" | "aircraft_id" | "flight_number"
 // >;
+// export interface ISearchFlight {
+//   arrival_airport_id: number;
+//   departure_airport_id: number;
+//   min_departure_time: string;
+//   arrival_time: string;
+//   max_departure_time: string;
+//   seat_class: ISeatClass;
+//   adults: number;
+//   children: number;
+//   infants: number;
+// }
+
 export interface ISearchFlight {
   arrival_airport_id: number;
   departure_airport_id: number;
-  min_departure_time: string;
-  arrival_time: string;
-  max_departure_time: string;
+  departure_time: {
+    year: number;
+    month: number;
+    day: number;
+  };
   seat_class: ISeatClass;
-  adults: number;
-  children: number;
-  infants: number;
+  passengers: { adults: number; children: number; infants: number };
 }
 
 export const searchSchema = z
@@ -37,16 +49,24 @@ export const searchSchema = z
     z.object({
       arrival_airport_id: z.number().positive(),
       departure_airport_id: z.number().positive(),
-      max_departure_time: z.iso.datetime({ offset: true }),
-      arrival_time: z.iso.datetime({ offset: true }),
-      min_departure_time: z.iso.datetime({ offset: true }),
-      adults: z.number().int().min(1),
-      children: z.number().int().nonnegative(),
-      infants: z.number().int().nonnegative(),
+      // max_departure_time: z.iso.datetime({ offset: true }),
+      departure_time: z.object({
+        day: z.number().int().min(1).max(31),
+        month: z.number().int().min(0).max(11),
+        year: z.number().int().min(2024).max(2030),
+      }),
+      // arrival_time: z.iso.datetime({ offset: true }),
+      // min_departure_time: z.iso.datetime({ offset: true }),
+      passengers: z.object({
+        adults: z.number().int().min(1),
+        children: z.number().int().nonnegative(),
+        infants: z.number().int().nonnegative(),
+      }),
       seat_class: seatClassSchema,
     })
   )
-  .min(1);
+  .min(1)
+  .max(6);
 
 export const addSchema = z.object({
   flight_number: z.string().min(2),
@@ -58,3 +78,22 @@ export const addSchema = z.object({
   arrival_time: z.iso.datetime({ offset: true }),
   departure_time: z.iso.datetime({ offset: true }),
 });
+
+export interface ISearchResult {
+  id: number;
+  airline_id: number;
+  airline_name: string;
+  arrival_airport_id: 2;
+  arrival_airport_name: string;
+  arrival_time: string;
+  arrival_timezone: string;
+  departure_airport_id: 1;
+  departure_airport_name: string;
+  departure_time: string;
+  departure_timezone: string;
+  duration: number;
+  segment_total_amount: number;
+  airline_logo_url: string;
+  departure_city: string;
+  arrival_city: string;
+}

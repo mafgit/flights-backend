@@ -3,6 +3,7 @@ import pool from "../../database/db";
 import BaseService from "../../global/BaseService";
 import createHttpError from "http-errors";
 import PaymentsService from "../payments/payments.service";
+import { PoolClient } from "pg";
 
 export default class BookingsService extends BaseService<
   IBooking,
@@ -36,8 +37,8 @@ export default class BookingsService extends BaseService<
     return insertedPassengers[0].id;
   }
 
-  private async getFlightFares(segment: ISegment) {
-    const { rows } = await pool.query(
+  private async getFlightFares(client: PoolClient, segment: ISegment) {
+    const { rows } = await client.query(
       "select base_amount, tax_amount, surcharge_amount from flight_fares where flight_id = $1 and seat_class = $2",
       [segment.flight_id, segment.seat_class]
     );
@@ -48,15 +49,15 @@ export default class BookingsService extends BaseService<
     return rows;
   }
 
-  private async setSeatUnavailable(seatId: number) {
+  private async setSeatUnavailable(client: PoolClient, seatId: number) {
     // updating seat to unavailable
-    await pool.query("update seats set is_available = false where id = $1", [
+    await client.query("update seats set is_available = false where id = $1", [
       seatId,
     ]);
   }
 
-  private async getAvailableSeatId(segment: ISegment) {
-    const { rows: seatRows } = await pool.query(
+  private async getAvailableSeatId(client: PoolClient, segment: ISegment) {
+    const { rows: seatRows } = await client.query(
       "select * from seats where flight_id = $1 and seat_class = $2 and is_available = true limit 1 for update",
       [segment.flight_id, segment.seat_class]
     );
@@ -70,6 +71,7 @@ export default class BookingsService extends BaseService<
   }
 
   private async insertBooking(
+    client: PoolClient,
     user_id: number,
     total_surcharge_amount: number,
     total_base_amount: number,
@@ -78,7 +80,7 @@ export default class BookingsService extends BaseService<
     currency: string,
     ip_address: string
   ) {
-    const { rows: insertedBookings } = await pool.query<IBooking>(
+    const { rows: insertedBookings } = await client.query<IBooking>(
       "insert into bookings (user_id, total_amount, surcharge_amount, base_amount, tax_amount, currency, ip_address) values($1, $2, $3, $4, $5, $6, $7) returning *",
       [
         user_id,
@@ -95,13 +97,14 @@ export default class BookingsService extends BaseService<
   }
 
   private async insertAllSegments(
+    client: PoolClient,
     bookingId: number,
     segmentQueries: [string, any[]][]
   ) {
     let segmentsReturned: ISegment[] = [];
 
     for (let i = 0; i < segmentQueries.length; i++) {
-      const returned = await pool.query<ISegment>(segmentQueries[i][0], [
+      const returned = await client.query<ISegment>(segmentQueries[i][0], [
         bookingId,
         ...segmentQueries[i][1],
       ]);
@@ -125,13 +128,14 @@ export default class BookingsService extends BaseService<
       passport_number: string;
     }[] = [];
 
+    const client = await pool.connect();
     try {
-      await pool.query("begin");
+      await client.query("begin");
       for (let i = 0; i < data.segments.length; i++) {
         // getting fares for each segment
-        const fares = await this.getFlightFares(data.segments[i]);
+        const fares = await this.getFlightFares(client, data.segments[i]);
         // checking if seat available
-        const seatId = await this.getAvailableSeatId(data.segments[i]);
+        const seatId = await this.getAvailableSeatId(client, data.segments[i]);
 
         // adding passenger
         const { nationality, passport_number } = data.passengers[i];
@@ -153,7 +157,7 @@ export default class BookingsService extends BaseService<
           passengerId = passengersAdded[passengerIndex].id;
         }
 
-        await this.setSeatUnavailable(seatId);
+        await this.setSeatUnavailable(client, seatId);
 
         const { base_amount, tax_amount, surcharge_amount } = fares[0];
         total_base_amount += base_amount;
@@ -180,6 +184,7 @@ export default class BookingsService extends BaseService<
         total_base_amount + total_tax_amount + total_surcharge_amount;
       // adding booking
       const insertedBooking = await this.insertBooking(
+        client,
         data.user_id,
         total_surcharge_amount,
         total_base_amount,
@@ -191,6 +196,7 @@ export default class BookingsService extends BaseService<
       const { id: bookingId } = insertedBooking;
 
       const segmentsReturned = await this.insertAllSegments(
+        client,
         bookingId,
         segmentQueries
       );
@@ -202,17 +208,19 @@ export default class BookingsService extends BaseService<
         method: "cash",
         status: "pending",
         user_id: data.user_id,
-      });
+      }, client);
 
-      await pool.query("commit");
+      await client.query("commit");
 
       return {
         ...insertedBooking,
         segments: segmentsReturned,
       };
     } catch (error) {
-      await pool.query("rollback");
+      await client.query("rollback");
       throw error;
+    } finally {
+      client.release();
     }
   }
 

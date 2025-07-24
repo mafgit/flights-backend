@@ -8,6 +8,7 @@ const flightsController = new FlightsController();
 const router = Router();
 
 router.get("/", asyncHandler(flightsController.getAll));
+router.post("/search", asyncHandler(flightsController.searchFlights));
 router.post(
   "/add",
   verifyLoggedIn,

@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 import BaseService from "./BaseService";
 import { getIdFromParams, validateAddBody, validateUpdateBody } from "./utils";
-import {z} from "zod";
+import { z } from "zod";
 
 export default abstract class BaseController<T, AddT> {
   service: BaseService<T, AddT>;
-  addSchema: z.ZodObject
+  addSchema: z.ZodObject;
   constructor(service: BaseService<T, AddT>, addSchema: z.ZodObject) {
     this.service = service;
-    this.addSchema = addSchema
+    this.addSchema = addSchema;
   }
 
   getAll = async (req: Request, res: Response) => {

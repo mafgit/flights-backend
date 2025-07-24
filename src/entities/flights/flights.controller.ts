@@ -1,4 +1,10 @@
-import { IAddFlight, IFlight, addSchema, searchSchema } from "./flights.types";
+import {
+  IAddFlight,
+  IFlight,
+  ISearchFlight,
+  addSchema,
+  searchSchema,
+} from "./flights.types";
 import FlightsService from "./flights.service";
 import BaseController from "../../global/BaseController";
 import { Request, Response } from "express";
@@ -14,7 +20,7 @@ class FlightsController extends BaseController<IFlight, IAddFlight> {
   }
 
   searchFlights = async (req: Request, res: Response) => {
-    const parsedBody = searchSchema.parse(req.body.flights);
+    const parsedBody = searchSchema.parse(req.body.flights) as ISearchFlight[];
     const rows = await this.service.searchFlights(parsedBody);
     res.json({ data: rows });
   };
