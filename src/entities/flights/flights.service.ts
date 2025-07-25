@@ -42,7 +42,6 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
   async searchFlights(flights: ISearchFlight[]) {
     const results: ISearchResult[][] = [];
     let minLength = Number.MAX_SAFE_INTEGER;
-    console.log("-------------------------------------------" + flights.length);
 
     for (let i = 0; i < flights.length; i++) {
       const data = flights[i];
@@ -108,8 +107,6 @@ limit 10;
       const maxDepartureTime = new Date(minDepartureTime);
       maxDepartureTime.setDate(maxDepartureTime.getDate() + 1);
 
-      console.log('sending: ', data.passengers);
-      
       const { rows } = await pool.query(query, [
         data.passengers.adults,
         data.passengers.children,
