@@ -1,4 +1,6 @@
-select f.id, f.departure_airport_id, f.arrival_airport_id, f.airline_id, f.status, f.arrival_time, f.departure_time,
+select round(extract(hour from departure_time) +
+	extract(minute from departure_time) / 60, 1) as departure_hour,
+	f.id, f.departure_airport_id, f.arrival_airport_id, f.airline_id, f.status, f.arrival_time, f.departure_time,
 	ap1.name as departure_airport_name,
 	ap2.name as arrival_airport_name,
 	al.name as airline_name,
@@ -19,7 +21,9 @@ join seats s on s.flight_id = f.id
 where s.seat_class = 'economy' and s.is_available = true
 	and f.status = 'scheduled'
 	and departure_airport_id = 1 and arrival_airport_id = 2
+	and s.seat_class = ff.seat_class
 	and f.departure_time >= '2025-08-01 00:00:00+05' and f.departure_time <= '2025-08-02 00:00:00+05'
+ 	and extract(hour from departure_time) between 6.5 and 24
 group by f.id, ap1.name, ap2.name, al.name, ff.adult_base_amount, ff.tax_amount, ff.surcharge_amount, ff.child_base_amount, ff.infant_base_amount, ap1.timezone, ap2.timezone
 order by segment_total_amount asc, duration asc
 limit 10;

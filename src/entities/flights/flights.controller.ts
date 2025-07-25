@@ -20,8 +20,15 @@ class FlightsController extends BaseController<IFlight, IAddFlight> {
   }
 
   searchFlights = async (req: Request, res: Response) => {
-    const parsedBody = searchSchema.parse(req.body.flights) as ISearchFlight[];
-    const rows = await this.service.searchFlights(parsedBody);
+    const { flights, airlineIds, departureTimes } = searchSchema.parse(
+      req.body
+    );
+
+    const rows = await this.service.searchFlights(
+      flights,
+      departureTimes,
+      airlineIds
+    );
     res.json({ data: rows });
   };
 }

@@ -39,9 +39,16 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
     return rows[0];
   }
 
-  async searchFlights(flights: ISearchFlight[]) {
+  async searchFlights(
+    flights: ISearchFlight[],
+    departureTimes: { min: number; max: number }[],
+    airlineIds: number[]
+  ) {
     const results: ISearchResult[][] = [];
     let minLength = Number.MAX_SAFE_INTEGER;
+    if (flights.length !== departureTimes.length || flights.length === 0) {
+      throw createHttpError(400, "Invalid search request");
+    }
 
     for (let i = 0; i < flights.length; i++) {
       const data = flights[i];
@@ -86,15 +93,17 @@ join seats s on s.flight_id = f.id
 where s.seat_class = $4 and s.is_available = true
 	and f.status = 'scheduled'
 	and departure_airport_id = $5 and arrival_airport_id = $6
-	and f.departure_time >= $7 and f.departure_time <= $8
   and ff.seat_class = s.seat_class
+	and f.departure_time >= $7 and f.departure_time <= $8
+  and extract(hour from f.departure_time) + extract(minute from f.departure_time) / 60 between $9 and $10
+  and al.id = any($11)
 group by f.id, ap1.name, ap2.name, al.name, ap1.timezone, ap2.timezone, al.logo_url, ap1.city, ap2.city,
   ff.adult_base_amount, ff.tax_amount, ff.surcharge_amount, ff.child_base_amount, ff.infant_base_amount
 order by segment_total_amount asc, duration asc
 limit 10;
       `;
 
-      const minDepartureTime = new Date(
+      const departureTime = new Date(
         data.departure_time.year,
         data.departure_time.month - 1,
         data.departure_time.day,
@@ -104,8 +113,14 @@ limit 10;
         0
       );
 
-      const maxDepartureTime = new Date(minDepartureTime);
-      maxDepartureTime.setDate(maxDepartureTime.getDate() + 1);
+      const minDepartureTime = new Date(departureTime);
+      minDepartureTime.setDate(
+        minDepartureTime.getDate() - (data.flexibility_days ?? 7)
+      );
+      const maxDepartureTime = new Date(departureTime);
+      maxDepartureTime.setDate(
+        maxDepartureTime.getDate() + (data.flexibility_days ?? 7)
+      );
 
       const { rows } = await pool.query(query, [
         data.passengers.adults,
@@ -114,8 +129,11 @@ limit 10;
         data.seat_class,
         data.departure_airport_id,
         data.arrival_airport_id,
-        minDepartureTime.toISOString(),
-        maxDepartureTime.toISOString(),
+        minDepartureTime.toISOString(), // with 0:0:0 time for minimum day
+        maxDepartureTime.toISOString(), // with 0:0:0 time for maximum day
+        departureTimes[i].min, // for exact time window of that departure day
+        departureTimes[i].max, // for exact time window of that departure day
+        airlineIds,
       ]);
 
       results.push(
