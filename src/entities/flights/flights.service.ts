@@ -115,11 +115,11 @@ limit 10;
 
       const minDepartureTime = new Date(departureTime);
       minDepartureTime.setDate(
-        minDepartureTime.getDate() - (data.flexibility_days ?? 7)
+        minDepartureTime.getDate() - data.departure_flexibility_days
       );
       const maxDepartureTime = new Date(departureTime);
       maxDepartureTime.setDate(
-        maxDepartureTime.getDate() + (data.flexibility_days ?? 7)
+        maxDepartureTime.getDate() + data.departure_flexibility_days + 1
       );
 
       const { rows } = await pool.query(query, [

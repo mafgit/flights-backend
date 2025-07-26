@@ -40,7 +40,7 @@ export interface ISearchFlight {
     month: number;
     day: number;
   };
-  flexibility_days?: number;
+  departure_flexibility_days: number;
   seat_class: ISeatClass;
   passengers: { adults: number; children: number; infants: number };
 }
@@ -51,7 +51,7 @@ export const searchSchema = z.object({
       z.object({
         arrival_airport_id: z.number().int().positive(),
         departure_airport_id: z.number().int().positive(),
-        flexibility_days: z.number().int().positive().optional(),
+        departure_flexibility_days: z.number().int().min(0).max(31),
         // max_departure_time: z.iso.datetime({ offset: true }),
         departure_time: z.object({
           day: z.number().int().min(1).max(31),
