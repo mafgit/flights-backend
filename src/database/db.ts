@@ -14,11 +14,11 @@ pool
   .connect()
   .then(async (client) => {
     // await pool.query("set time zone 'Asia/Karachi'");
-    console.log("Connected to PostgreSQL");
+    console.info("Connected to PostgreSQL");
     client.release();
   })
   .catch((err) => {
-    console.log("Error connecting to PostgreSQL:", err);
+    console.error("Error connecting to PostgreSQL:", err);
     // process.exit(1);
   });
 

@@ -147,8 +147,6 @@ limit 10;
       if (rows.length < minLength) minLength = rows.length;
     }
 
-    // console.log("results", results);
-
     if (minLength === 0) return [];
 
     // [1,2,3]

@@ -24,7 +24,6 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
 };
 
 export const me = async (req: AuthRequest, res: Response): Promise<void> => {
-  // console.log("received me");
   res.json({ userId: req.userId, role: req.role });
 };
 

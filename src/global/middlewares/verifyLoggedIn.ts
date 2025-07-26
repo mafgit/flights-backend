@@ -10,8 +10,6 @@ export const verifyLoggedIn = (
   res: Response,
   next: NextFunction
 ): void => {
-  // console.log('going through verify logged in middleware ...', req.body);
-
   const { token } = req.cookies;
   if (!token) {
     return next(createHttpError(401, "Not logged in"));

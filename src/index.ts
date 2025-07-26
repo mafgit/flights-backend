@@ -1,8 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
-import { ZodError } from "zod";
+import { ZodError, flattenError, prettifyError } from "zod";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { HttpError } from "http-errors";
 
 const environment = process.env.NODE_ENV || "development";
 if (environment !== "production") {
@@ -52,30 +53,24 @@ app.use("/api/users", UsersRouter);
 // when next(error) is called, express immediately shifts to the route handler, skipping other middlewares
 app.use(
   (
-    err: any,
-    req: express.Request,
+    err: HttpError | ZodError,
+    _req: express.Request,
     res: express.Response,
-    next: express.NextFunction
+    _next: express.NextFunction
   ) => {
-    console.log(err);
     if (err instanceof ZodError) {
-      res.status(400).json({ success: false, error: err.issues });
+      console.error(prettifyError(err));
+      res.status(400).json({ success: false, error: flattenError(err) });
+    } else {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      console.error("HttpError (" + status + "): " + message);
+      res.status(status).json({ success: false, error: message });
     }
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ success: false, error: message });
   }
 );
 
-// {
-//   Response: {
-//     status: "success" | "failed",
-//     responseCode:  "200" | "201" | "400" | "401" | "403" | "404" | "500";
-//     message: "Success message"
-//   }
-// }
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.info(`Server running on http://localhost:${PORT}`);
 });
