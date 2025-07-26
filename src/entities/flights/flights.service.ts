@@ -42,7 +42,8 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
   async searchFlights(
     flights: ISearchFlight[],
     departureTimes: { min: number; max: number }[],
-    airlineIds: number[]
+    airlineIds: number[],
+    maxTotalDuration?: number
   ) {
     const results: ISearchResult[][] = [];
     let minLength = Number.MAX_SAFE_INTEGER;
@@ -100,7 +101,7 @@ where s.seat_class = $4 and s.is_available = true
 group by f.id, ap1.name, ap2.name, al.name, ap1.timezone, ap2.timezone, al.logo_url, ap1.city, ap2.city,
   ff.adult_base_amount, ff.tax_amount, ff.surcharge_amount, ff.child_base_amount, ff.infant_base_amount
 order by segment_total_amount asc, duration asc
-limit 10;
+limit 7;
       `;
 
       const departureTime = new Date(
@@ -163,6 +164,12 @@ limit 10;
       }
     }
 
+    if (maxTotalDuration) {
+      return combinations.filter(
+        (c) =>
+          c.reduce((acc, curr) => acc + curr.duration, 0) <= maxTotalDuration
+      );
+    }
     return combinations;
   }
 }

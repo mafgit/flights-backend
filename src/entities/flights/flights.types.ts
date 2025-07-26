@@ -43,6 +43,7 @@ export interface ISearchFlight {
   departure_flexibility_days: number;
   seat_class: ISeatClass;
   passengers: { adults: number; children: number; infants: number };
+  max_total_duration?: number;
 }
 
 export const searchSchema = z.object({
@@ -74,14 +75,15 @@ export const searchSchema = z.object({
   departureTimes: z
     .array(
       z.object({
-        min: z.number().int().min(0).max(24),
-        max: z.number().int().min(0).max(24),
+        min: z.number().min(0).max(24),
+        max: z.number().min(0).max(24),
       })
     )
     .min(1)
     .max(6),
 
   airlineIds: z.array(z.number().int().positive()),
+  maxTotalDuration: z.number().positive().optional(),
 });
 
 export const addSchema = z.object({
