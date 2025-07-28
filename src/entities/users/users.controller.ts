@@ -4,7 +4,7 @@ import { validatePasswords } from "./users.utils";
 import UsersService from "./users.service";
 import { getIdFromParams } from "../../global/utils";
 import BaseController from "../../global/BaseController";
-import { AuthRequest } from "../auth/auth.types";
+import { MyRequest } from "../auth/auth.types";
 
 const usersService = new UsersService();
 
@@ -27,7 +27,7 @@ class UsersController extends BaseController<IUser, IAddUser> {
     res.json({ success });
   };
 
-  updateRole = async (req: AuthRequest, res: Response) => {
+  updateRole = async (req: MyRequest, res: Response) => {
     const id = getIdFromParams(req);
     const role = roleSchema.parse(req.body.role);
     const myRole = req.role!

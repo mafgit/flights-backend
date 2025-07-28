@@ -2,7 +2,7 @@ import { IAddBooking, IBooking, addSchema } from "./bookings.types";
 import BookingsService from "./bookings.service";
 import BaseController from "../../global/BaseController";
 import { Response } from "express";
-import { AuthRequest } from "../auth/auth.types";
+import { MyRequest } from "../auth/auth.types";
 import { paymentsService } from "../payments/payments.service";
 import createHttpError from "http-errors";
 
@@ -17,13 +17,13 @@ class BookingsController extends BaseController<IBooking, IAddBooking> {
     this.addSchema = addSchema;
   }
 
-  addWrapper = async (req: AuthRequest, res: Response) => {
+  addWrapper = async (req: MyRequest, res: Response) => {
     if ((req.role === "admin" || req.role === "super_admin") || (req.body.user_id === req.userId))
       return this.add(req, res);
     throw createHttpError(401, 'You are not authorized')
   };
 
-  getMyBookings = async (req: AuthRequest, res: Response) => {
+  getMyBookings = async (req: MyRequest, res: Response) => {
     const myBookings = await this.service.getMyBookings(req.userId!);
     res.json({ data: myBookings });
   };

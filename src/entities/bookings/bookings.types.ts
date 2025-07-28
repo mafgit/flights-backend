@@ -47,7 +47,7 @@ const segmentSchema = z.object({
   seat_class: seatClassSchema,
 });
 
-const passengerSchema = z.object({
+export const passengerSchema = z.object({
   full_name: z.string().min(3),
   gender: z.enum(["m", "f", "x"]),
   passport_number: z.string().min(6),

@@ -41,39 +41,42 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
 
   async searchFlights(
     flights: ISearchFlight[],
+    passengers: { adults: number; children: number; infants: number },
     departureTimes: { min: number; max: number }[],
     airlineIds: number[],
     maxTotalDuration?: number
   ) {
+    console.log("sss", airlineIds);
+
     const results: ISearchResult[][] = [];
     let minLength = Number.MAX_SAFE_INTEGER;
     if (flights.length !== departureTimes.length || flights.length === 0) {
       throw createHttpError(400, "Invalid search request");
     }
 
+    const totalPeople =
+      passengers.adults + passengers.infants + passengers.children;
+
+    if (
+      passengers.adults !== Math.floor(passengers.adults) ||
+      passengers.children !== Math.floor(passengers.children) ||
+      passengers.infants !== Math.floor(passengers.infants)
+    ) {
+      throw createHttpError(400, "Invalid number of passengers");
+    }
+
     for (let i = 0; i < flights.length; i++) {
       const data = flights[i];
 
-      const totalPeople =
-        data.passengers.adults +
-        data.passengers.infants +
-        data.passengers.children;
       if (totalPeople === 0) {
         throw createHttpError(400, "There must be at least one passenger");
       }
       if (totalPeople > 10) {
         throw createHttpError(400, "More than 10 passengers are not allowed");
       }
-      if (
-        data.passengers.adults !== Math.floor(data.passengers.adults) ||
-        data.passengers.children !== Math.floor(data.passengers.children) ||
-        data.passengers.infants !== Math.floor(data.passengers.infants)
-      ) {
-        throw createHttpError(400, "Invalid number of passengers");
-      }
 
       let query = `
-select f.id, f.departure_airport_id, f.arrival_airport_id, f.airline_id, f.arrival_time, f.departure_time,
+select distinct f.id, s.seat_class, f.departure_airport_id, f.arrival_airport_id, f.airline_id, f.arrival_time, f.departure_time,
 	ap1.name as departure_airport_name, ap1.city as departure_city,
 	ap2.name as arrival_airport_name, ap2.city as arrival_city,
 	al.name as airline_name, al.logo_url as airline_logo_url,
@@ -90,16 +93,13 @@ join airports ap1 on f.departure_airport_id = ap1.id
 join airports ap2 on f.arrival_airport_id = ap2.id
 join airlines al on f.airline_id = al.id
 join flight_fares ff on ff.flight_id = f.id
-join seats s on s.flight_id = f.id
+join seats s on s.flight_id = f.id and s.seat_class = ff.seat_class
 where s.seat_class = $4 and s.is_available = true
 	and f.status = 'scheduled'
 	and departure_airport_id = $5 and arrival_airport_id = $6
-  and ff.seat_class = s.seat_class
 	and f.departure_time >= $7 and f.departure_time <= $8
   and extract(hour from f.departure_time) + extract(minute from f.departure_time) / 60 between $9 and $10
-  and al.id = any($11)
-group by f.id, ap1.name, ap2.name, al.name, ap1.timezone, ap2.timezone, al.logo_url, ap1.city, ap2.city,
-  ff.adult_base_amount, ff.tax_amount, ff.surcharge_amount, ff.child_base_amount, ff.infant_base_amount
+  ${airlineIds.length > 0 ? "and al.id = any($11)" : ""}
 order by segment_total_amount asc, duration asc
 limit 7;
       `;
@@ -114,19 +114,22 @@ limit 7;
         0
       );
 
+      // todo: allow flexible seat classes in search
+
       const minDepartureTime = new Date(departureTime);
       minDepartureTime.setDate(
-        minDepartureTime.getDate() - data.departure_flexibility_days
+        minDepartureTime.getDate()
+        //  - data.departure_time.flexibility_days
       );
       const maxDepartureTime = new Date(departureTime);
       maxDepartureTime.setDate(
-        maxDepartureTime.getDate() + data.departure_flexibility_days + 1
+        maxDepartureTime.getDate() + data.departure_time.flexibility_days + 1
       );
 
-      const { rows } = await pool.query(query, [
-        data.passengers.adults,
-        data.passengers.children,
-        data.passengers.infants,
+      const queryValues: any = [
+        passengers.adults,
+        passengers.children,
+        passengers.infants,
         data.seat_class,
         data.departure_airport_id,
         data.arrival_airport_id,
@@ -134,8 +137,15 @@ limit 7;
         maxDepartureTime.toISOString(), // with 0:0:0 time for maximum day
         departureTimes[i].min, // for exact time window of that departure day
         departureTimes[i].max, // for exact time window of that departure day
-        airlineIds,
-      ]);
+      ];
+
+      if (airlineIds.length > 0) queryValues.push(airlineIds);
+
+      const { rows } = await pool.query(query, queryValues);
+
+      if (rows.length === 0) {
+        return [];
+      }
 
       results.push(
         rows.map((r) => ({
@@ -173,3 +183,6 @@ limit 7;
     return combinations;
   }
 }
+
+// todo: ensure that prev segment is not after this segment (both in back and frontend)
+// todo: ensure when querying flights, that X number of seats are available

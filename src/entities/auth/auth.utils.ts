@@ -39,7 +39,7 @@ export const signAndSetToken = async (
     httpOnly: true,
     maxAge,
     sameSite: "lax",
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
   });
 
   // if any error

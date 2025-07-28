@@ -1,7 +1,6 @@
 import {
   IAddFlight,
   IFlight,
-  ISearchFlight,
   addSchema,
   searchSchema,
 } from "./flights.types";
@@ -20,11 +19,17 @@ class FlightsController extends BaseController<IFlight, IAddFlight> {
   }
 
   searchFlights = async (req: Request, res: Response) => {
-    const { flights, airlineIds, departureTimes, maxTotalDuration } =
-      searchSchema.parse(req.body);
+    const {
+      flights,
+      airlineIds,
+      departureTimes,
+      maxTotalDuration,
+      passengers,
+    } = searchSchema.parse(req.body);
 
     const rows = await this.service.searchFlights(
       flights,
+      passengers,
       departureTimes,
       airlineIds,
       maxTotalDuration

@@ -39,10 +39,9 @@ export interface ISearchFlight {
     year: number;
     month: number;
     day: number;
+    flexibility_days: number;
   };
-  departure_flexibility_days: number;
   seat_class: ISeatClass;
-  passengers: { adults: number; children: number; infants: number };
   max_total_duration?: number;
 }
 
@@ -52,19 +51,11 @@ export const searchSchema = z.object({
       z.object({
         arrival_airport_id: z.number().int().positive(),
         departure_airport_id: z.number().int().positive(),
-        departure_flexibility_days: z.number().int().min(0).max(31),
-        // max_departure_time: z.iso.datetime({ offset: true }),
         departure_time: z.object({
           day: z.number().int().min(1).max(31),
           month: z.number().int().min(0).max(11),
           year: z.number().int().min(2024).max(2030),
-        }),
-        // arrival_time: z.iso.datetime({ offset: true }),
-        // min_departure_time: z.iso.datetime({ offset: true }),
-        passengers: z.object({
-          adults: z.number().int().min(1),
-          children: z.number().int().nonnegative(),
-          infants: z.number().int().nonnegative(),
+          flexibility_days: z.number().int().min(0).max(31),
         }),
         seat_class: seatClassSchema,
       })
@@ -84,6 +75,11 @@ export const searchSchema = z.object({
 
   airlineIds: z.array(z.number().int().positive()),
   maxTotalDuration: z.number().positive().optional(),
+  passengers: z.object({
+    adults: z.number().int().min(1),
+    children: z.number().int().nonnegative(),
+    infants: z.number().int().nonnegative(),
+  }),
 });
 
 export const addSchema = z.object({
@@ -114,4 +110,5 @@ export interface ISearchResult {
   airline_logo_url: string;
   departure_city: string;
   arrival_city: string;
+  seat_class: ISeatClass;
 }

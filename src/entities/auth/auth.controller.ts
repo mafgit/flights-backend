@@ -4,7 +4,7 @@ import {
   validateLoginBody,
   validateSignupBody,
 } from "./auth.utils";
-import { AuthRequest } from "./auth.types";
+import { MyRequest } from "./auth.types";
 import AuthService from "./auth.service";
 
 const authService = new AuthService();
@@ -23,12 +23,12 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
   res.json({ userId: user.id, success: true, role: user.role });
 };
 
-export const me = async (req: AuthRequest, res: Response): Promise<void> => {
+export const me = async (req: MyRequest, res: Response): Promise<void> => {
   res.json({ userId: req.userId, role: req.role });
 };
 
 export const logout = async (
-  req: AuthRequest,
+  req: MyRequest,
   res: Response
 ): Promise<void> => {
   res.clearCookie("token");

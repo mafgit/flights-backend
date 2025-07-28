@@ -1,9 +1,9 @@
 import { Response, NextFunction } from "express";
-import { AuthRequest } from "../../entities/auth/auth.types";
+import { MyRequest } from "../../entities/auth/auth.types";
 import createHttpError from 'http-errors'
 
 export const verifyAdmin = (
-  req: AuthRequest,
+  req: MyRequest,
   res: Response,
   next: NextFunction
 ): void => {
@@ -13,7 +13,7 @@ export const verifyAdmin = (
 };
 
 export const verifySuperAdmin = (
-  req: AuthRequest,
+  req: MyRequest,
   res: Response,
   next: NextFunction
 ): void => {

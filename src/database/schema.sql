@@ -84,6 +84,7 @@ create table seats (
 	UNIQUE (flight_id, seat_number)
 );
 
+create type passenger_type_enum as enum ('adult', 'child', 'infant');
 create type gender_enum as enum ('m', 'f', 'x');
 
 create table passengers (
@@ -92,7 +93,8 @@ create table passengers (
 	gender gender_enum NOT NULL,
 	passport_number VARCHAR(20) NOT NULL,
 	nationality VARCHAR(30) NOT NULL,
-	date_of_birth DATE NOT NULL
+	date_of_birth DATE NOT NULL,
+	passenger_type passenger_type_enum NOT NULL
 );
 
 
@@ -140,4 +142,35 @@ create table payments (
 	status payment_status DEFAULT 'pending',
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+create table carts (
+	id serial primary key,
+	user_id int references users(id) unique null,
+	session_id varchar(70) unique null,
+	created_at timestamp with time zone default CURRENT_TIMESTAMP,
+	updated_at timestamp with time zone default CURRENT_TIMESTAMP,
+	check (not (session_id is null and user_id is null))
+);
+
+create table cart_segments (
+	id serial primary key,
+	flight_id int references flights(id) on delete cascade,
+	cart_id int references carts(id) on delete cascade not null,
+	-- item_order int not null check (item_order >= 0 and item_order <= 5),
+	seat_class seat_class_enum not null,
+	unique (cart_id, flight_id) -- no duplicate flights in same cart
+);
+
+
+create table cart_passengers (
+	id serial primary key,
+	cart_id int references carts(id) on delete cascade not null,
+	
+	full_name VARCHAR(50) NULL,
+	gender gender_enum NULL,
+	passport_number VARCHAR(20) NULL,
+	nationality VARCHAR(30) NULL,
+	date_of_birth DATE NULL,
+	passenger_type passenger_type_enum NOT NULL
 );
