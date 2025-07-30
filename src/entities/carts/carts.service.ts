@@ -44,7 +44,7 @@ export default class CartsService {
       // --------------- getting cart segments ----------------
       const { rows: segments } = await pool.query(
         `
-select distinct f.id, s.seat_class, f.departure_airport_id, f.arrival_airport_id, f.airline_id, f.arrival_time, f.departure_time,
+select distinct f.id, s.seat_class, ff.adult_base_amount, ff.tax_amount, ff.surcharge_amount, ff.child_base_amount, ff.infant_base_amount, f.departure_airport_id, f.arrival_airport_id, f.airline_id, f.arrival_time, f.departure_time,
 	ap1.name as departure_airport_name, ap1.city as departure_city,
 	ap2.name as arrival_airport_name, ap2.city as arrival_city,
 	al.name as airline_name, al.logo_url as airline_logo_url,
@@ -69,7 +69,16 @@ order by departure_time asc;`,
         [adults, children, infants]
       );
 
-      return { cart, segments, passengers };
+      return {
+        cart,
+        segments: segments.map((s) => ({
+          ...s,
+          duration: parseFloat(s.duration),
+          segment_total_amount: parseFloat(s.segment_total_amount),
+          // adult_base_amount: parseFloat(s.)
+        })),
+        passengers,
+      };
     } else {
       throw createHttpError(401, "Neither session id found, nor token");
     }
@@ -81,12 +90,7 @@ order by departure_time asc;`,
     sessionId?: string
   ) {
     // ----- delete previous -----
-    if (sessionId) {
-      await pool.query("delete from carts where session_id = $1", [sessionId]);
-    }
-    if (userId) {
-      await pool.query("delete from carts where user_id = $1", [userId]);
-    }
+    await this.delete(sessionId, userId);
 
     if (!sessionId && !userId) {
       sessionId = uuidv4();
@@ -150,5 +154,19 @@ order by departure_time asc;`,
     const { rows: passengerRows } = await pool.query(q, values);
 
     return { cart, segments: segmentRows, passengers: passengerRows };
+  }
+
+  async delete(sessionId?: string, userId?: number) {
+    if (userId || sessionId) {
+      if (userId) {
+        await pool.query("delete from carts where user_id = $1", [userId]);
+      } else if (sessionId) {
+        await pool.query("delete from carts where session_id = $1", [
+          sessionId,
+        ]);
+      }
+    } else {
+      throw createHttpError(401, "Neither session id found, nor token");
+    }
   }
 }

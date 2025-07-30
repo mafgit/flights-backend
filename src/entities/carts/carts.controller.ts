@@ -33,6 +33,15 @@ class CartsController {
     res.json({ data: { cart, segments, passengers } });
   };
 
+  delete = async (req: MyRequest, res: Response) => {
+    // const cartId = req.params.id ? parseInt(req.params.id) : undefined;
+    const sessionId = req.cookies.sessionId;
+    const userId = req.userId;
+
+    await this.service.delete(sessionId, userId);
+    res.json({ success: true });
+  };
+
   // update = async (req: MyRequest, res: Response) => {
 
   // }

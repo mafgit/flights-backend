@@ -20,12 +20,11 @@ const router = Router();
 router.post("/add", optionalLoggedIn, asyncHandler(cartsController.add));
 router.get("/get-one", optionalLoggedIn, asyncHandler(cartsController.getOne));
 
-// router.delete(
-//   "/delete/:id",
-//   verifyLoggedIn,
-//   verifyAdmin,
-//   asyncHandler(cartsController.delete)
-// );
+router.delete(
+  "/delete",
+  optionalLoggedIn,
+  asyncHandler(cartsController.delete)
+);
 
 // router.put(
 //   "/update/:id",
