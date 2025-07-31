@@ -89,12 +89,12 @@ order by departure_time asc;`,
     userId?: number,
     sessionId?: string
   ) {
-    // ----- delete previous -----
-    await this.delete(sessionId, userId);
-
     if (!sessionId && !userId) {
       sessionId = uuidv4();
+    } else {
+      await this.delete(sessionId, userId);
     }
+    // ----- delete previous -----
 
     const { rows: cartRows } = await pool.query(
       "insert into carts (user_id, session_id) values ($1, $2) returning *",

@@ -46,8 +46,6 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
     airlineIds: number[],
     maxTotalDuration?: number
   ) {
-    console.log("sss", airlineIds);
-
     const results: ISearchResult[][] = [];
     let minLength = Number.MAX_SAFE_INTEGER;
     if (flights.length !== departureTimes.length || flights.length === 0) {
