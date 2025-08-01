@@ -12,7 +12,7 @@ export default class SeatsService extends BaseService<ISeat, IAddSeat> {
     });
   }
 
-  async add() {
+  async handlePaymentIntent() {
     return {};
   }
 

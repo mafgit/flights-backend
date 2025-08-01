@@ -104,5 +104,5 @@ export default abstract class BaseService<T, AddT> {
     return rows[0];
   }
 
-  abstract add(data: any, client?: PoolClient | Pool): Promise<any>;
+  abstract handlePaymentIntent(data: any, client?: PoolClient | Pool): Promise<any>;
 }

@@ -1,31 +1,26 @@
-import { IAddBooking, IBooking, addSchema } from "./bookings.types";
 import BookingsService from "./bookings.service";
-import BaseController from "../../global/BaseController";
 import { Response } from "express";
 import { MyRequest } from "../auth/auth.types";
-import { paymentsService } from "../payments/payments.service";
-import createHttpError from "http-errors";
+import { bookingAndPaymentBodySchema } from "../payments/payments.types";
 
-const bookingsService = new BookingsService(paymentsService);
-
-class BookingsController extends BaseController<IBooking, IAddBooking> {
+class BookingsController {
   declare service: BookingsService; // overriding service of base
 
-  constructor() {
-    super(bookingsService, addSchema);
-    this.service = bookingsService;
-    this.addSchema = addSchema;
-  }
-
-  addWrapper = async (req: MyRequest, res: Response) => {
-    if ((req.role === "admin" || req.role === "super_admin") || (req.body.user_id === req.userId))
-      return this.add(req, res);
-    throw createHttpError(401, 'You are not authorized')
-  };
+  // addWrapper = async (req: MyRequest, res: Response) => {
+  //   if ((req.role === "admin" || req.role === "super_admin") || (req.body.user_id === req.userId))
+  //     return this.add(req, res);
+  //   throw createHttpError(401, 'You are not authorized')
+  // };
 
   getMyBookings = async (req: MyRequest, res: Response) => {
     const myBookings = await this.service.getMyBookings(req.userId!);
     res.json({ data: myBookings });
+  };
+
+  handleBookingIntent = async (req: MyRequest, res: Response) => {
+    const data = bookingAndPaymentBodySchema.parse(req.body);
+    const { clientSecret } = await this.service.handleBookingIntent(data);
+    res.json({ clientSecret });
   };
 }
 

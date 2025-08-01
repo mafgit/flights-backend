@@ -98,11 +98,12 @@ create table passengers (
 );
 
 
-create type booking_status as enum ('pending', 'cancelled', 'delayed', 'completed');
+create type booking_status as enum ('pending', 'cancelled', 'failed', 'confirmed');
 
 create table bookings (
 	id SERIAL PRIMARY KEY,
-	user_id INT REFERENCES users(id),
+	user_id INT REFERENCES users(id) NULL,
+	guest_email varchar(100) null,
 	-- booking_code VARCHAR(100) UNIQUE NOT NULL,
 	base_amount DECIMAL NOT NULL,
 	surcharge_amount DECIMAL NOT NULL,
@@ -111,7 +112,9 @@ create table bookings (
 	currency VARCHAR(30) NOT NULL,
 	status booking_status DEFAULT 'pending',	
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+	check (not (user_id is null and guest_email is null))
 );
 
 create type segment_status as enum ('confirmed', 'cancelled', 'flown', 'no_show');
@@ -129,19 +132,23 @@ create table booking_segments (
 	status segment_status DEFAULT 'confirmed'
 );
 
-create type payment_status as enum ('paid', 'pending', 'failed', 'refunded');
+create type payment_status as enum ('paid', 'failed', 'refunded');
 create type payment_method_enum as enum ('cash', 'credit_card', 'debit_card', 'wallet', 'bank_transfer');
 
 create table payments (
 	id SERIAL PRIMARY KEY,
-	user_id INT REFERENCES users(id),
 	booking_id INT REFERENCES bookings(id),
 	total_amount DECIMAL NOT NULL,
 	currency VARCHAR(30) NOT NULL,
 	method payment_method_enum NOT NULL,
 	status payment_status DEFAULT 'pending',
+	
+	stripe_payment_intent_id text,
+
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+	check ((status = 'paid' and stripe_payment_intent_id is not null) or status is not 'paid') -- or: intent_id is not null or status is not paid
 );
 
 create table carts (

@@ -15,7 +15,7 @@ export default class AirportsService extends BaseService<IAirport, IAddAirport> 
     });
   }
 
-  async add(data: IAddAirport) {
+  async handlePaymentIntent(data: IAddAirport) {
     const { rows } = await pool.query(
       "insert into airports (name, code, country, city, timezone, latitude, longitude) values ($1, $2, $3, $4, $5, $6, $7) returning *",
       [

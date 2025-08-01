@@ -12,7 +12,7 @@ export default class AirlinesService extends BaseService<IAirline, IAddAirline> 
     });
   }
 
-  async add(data: IAddAirline) {
+  async handlePaymentIntent(data: IAddAirline) {
     const { rows } = await pool.query(
       "insert into airlines (name, code, country, logo_url) values ($1, $2, $3, $4) returning *",
       [data.name, data.code, data.country, data.logo_url]

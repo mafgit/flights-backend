@@ -64,9 +64,9 @@ join flight_fares ff on ff.flight_id = f.id
 join seats s on s.flight_id = f.id and ff.seat_class = s.seat_class
 join cart_segments cs on f.id = cs.flight_id and cs.seat_class = s.seat_class
 where f.id = cs.flight_id and s.is_available = true
-	and f.status = 'scheduled'
+	and f.status = 'scheduled' and cs.cart_id = $4
 order by departure_time asc;`,
-        [adults, children, infants]
+        [adults, children, infants, cart.id]
       );
 
       return {

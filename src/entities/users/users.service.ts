@@ -15,7 +15,7 @@ export default class UsersService extends BaseService<IUser, IAddUser> {
     });
   }
 
-  async add(data: IAddUser) {
+  async handlePaymentIntent(data: IAddUser) {
     const hashedPassword = await hashPassword(data.password);
     const { rows } = await pool.query(
       "insert into users (full_name, email, password_hash, role) values ($1, $2, $3, $4) returning *",

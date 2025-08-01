@@ -18,7 +18,7 @@ export default abstract class BaseController<T, AddT> {
 
   add = async (req: Request, res: Response) => {
     const parsedBody = validateAddBody<AddT>(this.addSchema, req.body);
-    const row = await this.service.add(parsedBody);
+    const row = await this.service.handlePaymentIntent(parsedBody);
     res.status(201).json({ data: row });
   };
 

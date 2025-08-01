@@ -15,7 +15,7 @@ export default class AircraftsService extends BaseService<
     });
   }
 
-  async add(data: IAddAircraft, client: PoolClient | Pool = pool) {
+  async handlePaymentIntent(data: IAddAircraft, client: PoolClient | Pool = pool) {
     const { rows } = await client.query(
       "insert into aircrafts (model, manufacturer, capacity) values ($1, $2, $3) returning *",
       [data.model, data.manufacturer, data.capacity]

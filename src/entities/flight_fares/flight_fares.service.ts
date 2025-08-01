@@ -18,7 +18,7 @@ export default class FlightFaresService extends BaseService<
     });
   }
 
-  async add(data: IAddFlightFares) {
+  async handlePaymentIntent(data: IAddFlightFares) {
     const { rows } = await pool.query(
       "insert into flightFares (flight_id, base_amount, surcharge_amount, tax_amount, total_amount, seat_class) values ($1, $2, $3, $4, $5, $6) returning *",
       [

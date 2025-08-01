@@ -1,14 +1,28 @@
-import { IAddPayment, IPayment, addSchema } from "./payments.types";
-import PaymentsService, { paymentsService } from "./payments.service";
-import BaseController from "../../global/BaseController";
+import PaymentsService from "./payments.service";
+import { Response } from "express";
+import { MyRequest } from "../auth/auth.types";
 
-class PaymentsController extends BaseController<IPayment, IAddPayment> {
-  declare service: PaymentsService
-  constructor() {
-    super(paymentsService, addSchema);
-    this.service = paymentsService;
-    this.addSchema = addSchema;
-  }
+class PaymentsController {
+  declare service: PaymentsService;
+  constructor() {}
+
+  // paymentIntentHandler = async (req: MyRequest, res: Response) => {
+  //   const body = bookingAndPaymentBodySchema.parse(req.body);
+
+  //   const { clientSecret } = await this.service.handlePaymentIntent(body);
+
+  //   res.json({
+  //     clientSecret,
+  //   });
+  // };
+
+  webhookHandler = async (req: MyRequest, res: Response) => {
+    const signature = req.headers["stripe-signature"] as string;
+
+    await this.service.webhookHandler(signature, req.body);
+
+    res.json({ received: true });
+  };
 }
 
 export default PaymentsController;

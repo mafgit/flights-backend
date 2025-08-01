@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",
+    "stripe": "stripe listen --forward-to http://localhost:5000/api/payments",
     "build": "tsc",
     "start": "node dist/index.js"
   },
@@ -33,6 +34,7 @@
     "ip-location-api": "^3.0.3",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
+    "stripe": "^18.4.0",
     "uuid": "^11.1.0",
     "zod": "^4.0.5"
   }

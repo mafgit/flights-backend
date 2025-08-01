@@ -22,7 +22,7 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
     });
   }
 
-  async add(data: IAddFlight) {
+  async handlePaymentIntent(data: IAddFlight) {
     const { rows } = await pool.query(
       "insert into flights (flight_number, airline_id, aircraft_id, departure_airport_id, arrival_airport_id, status, arrival_time, departure_time) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *",
       [
@@ -98,7 +98,9 @@ where s.seat_class = $4 and s.is_available = true
 	and f.departure_time >= $7 and f.departure_time <= $8
   and extract(hour from f.departure_time) + extract(minute from f.departure_time) / 60 between $9 and $10
   ${airlineIds.length > 0 ? "and al.id = any($11)" : ""}
-order by segment_total_amount asc, duration asc
+group by f.id, s.seat_class, ap1.id, ap2.id, al.id, ff.id
+	having count(s.id) >= $${airlineIds.length > 0 ? "12" : "11"}
+  order by segment_total_amount asc, duration asc
 limit 7;
       `;
 
@@ -134,10 +136,11 @@ limit 7;
         minDepartureTime.toISOString(), // with 0:0:0 time for minimum day
         maxDepartureTime.toISOString(), // with 0:0:0 time for maximum day
         departureTimes[i].min, // for exact time window of that departure day
-        departureTimes[i].max, // for exact time window of that departure day
+        departureTimes[i].max, // for exact time window of that departure day,
       ];
 
       if (airlineIds.length > 0) queryValues.push(airlineIds);
+      queryValues.push(passengers.adults + passengers.children);
 
       const { rows } = await pool.query(query, queryValues);
 
@@ -164,14 +167,7 @@ limit 7;
 
     // 1,4,6
     // 2,5,7
-    const combinations: ISearchResult[][] = [];
-    for (let i = 0; i < minLength; i++) {
-      combinations[i] = [];
-      for (let j = 0; j < results.length; j++) {
-        combinations[i].push(results[j][i]);
-      }
-    }
-
+    const combinations = cartesian(results);
     if (maxTotalDuration) {
       return combinations.filter(
         (c) =>
@@ -184,3 +180,10 @@ limit 7;
 
 // todo: ensure that prev segment is not after this segment (both in back and frontend)
 // todo: ensure when querying flights, that X number of seats are available
+
+function cartesian(arrays: ISearchResult[][]) {
+  return arrays.reduce<ISearchResult[][]>(
+    (a, b) => a.flatMap((x) => b.map((y) => [...x, y])),
+    [[]]
+  );
+}

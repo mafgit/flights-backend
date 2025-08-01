@@ -46,10 +46,13 @@ app.use("/api/bookings", BookingsRouter);
 app.use("/api/flight-fares", FlightFaresRouter);
 app.use("/api/flights", FlightsRouter);
 app.use("/api/airports", AirportsRouter);
-app.use("/api/payments", PaymentsRouter);
 app.use("/api/seats", SeatsRouter);
 app.use("/api/users", UsersRouter);
 app.use("/api/carts", CartsRouter);
+
+import Stripe from 'stripe'
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+app.use("/api/payments", PaymentsRouter);
 
 // global error handler (it must be the last middleware)
 // express has a rule: if a middleware has 4 parameters, it is considered an error handler

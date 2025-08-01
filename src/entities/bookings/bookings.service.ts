@@ -1,59 +1,32 @@
-import { IAddBooking, IBooking, IPassenger, ISegment } from "./bookings.types";
+import { IBooking, IPassenger, ISegment } from "./bookings.types";
 import pool from "../../database/db";
-import BaseService from "../../global/BaseService";
 import createHttpError from "http-errors";
-import PaymentsService from "../payments/payments.service";
+import PaymentsService, { paymentsService } from "../payments/payments.service";
 import { PoolClient } from "pg";
+import { IBookingAndPaymentBody } from "../payments/payments.types";
+import { validatePassengerCounts } from "./bookings.utils";
 
-export default class BookingsService extends BaseService<
-  IBooking,
-  IAddBooking
-> {
+export default class BookingsService {
   declare paymentsService: PaymentsService;
-  constructor(paymentsService: PaymentsService) {
-    super("bookings", {
-      user_id: "number",
-      // booking_code: "string",
-      total_amount: "number",
-      currency: "string",
-      status: "string",
-    });
 
+  constructor(paymentsService: PaymentsService) {
     this.paymentsService = paymentsService;
   }
 
   private async insertPassenger(passenger: IPassenger) {
     const { rows: insertedPassengers } = await pool.query(
-      "insert into passengers (date_of_birth, full_name, gender, nationality, passport_number) values ($1, $2, $3, $4, $5) returning *",
+      "insert into passengers (date_of_birth, full_name, gender, nationality, passport_number, passenger_type) values ($1, $2, $3, $4, $5, $6) returning *",
       [
         passenger.date_of_birth,
         passenger.full_name,
         passenger.gender,
         passenger.nationality,
         passenger.passport_number,
+        passenger.passenger_type,
       ]
     );
 
     return insertedPassengers[0].id;
-  }
-
-  private async getFlightFares(client: PoolClient, segment: ISegment) {
-    const { rows } = await client.query(
-      "select base_amount, tax_amount, surcharge_amount from flight_fares where flight_id = $1 and seat_class = $2",
-      [segment.flight_id, segment.seat_class]
-    );
-
-    if (rows.length === 0)
-      throw createHttpError(400, "Invalid flight or seat class");
-
-    return rows;
-  }
-
-  private async setSeatUnavailable(client: PoolClient, seatId: number) {
-    // updating seat to unavailable
-    await client.query("update seats set is_available = false where id = $1", [
-      seatId,
-    ]);
   }
 
   private async getAvailableSeatId(client: PoolClient, segment: ISegment) {
@@ -72,24 +45,37 @@ export default class BookingsService extends BaseService<
 
   private async insertBooking(
     client: PoolClient,
-    user_id: number,
-    total_surcharge_amount: number,
-    total_base_amount: number,
-    total_tax_amount: number,
-    total_amount: number,
-    currency: string,
-    ip_address: string
+    {
+      user_id,
+      total_surcharge_amount,
+      total_base_amount,
+      total_tax_amount,
+      total_amount,
+      guest_email,
+      currency,
+      ip_address,
+    }: {
+      user_id?: number;
+      total_surcharge_amount: number;
+      total_base_amount: number;
+      total_tax_amount: number;
+      total_amount: number;
+      guest_email?: string;
+      currency: string;
+      ip_address?: string;
+    }
   ) {
     const { rows: insertedBookings } = await client.query<IBooking>(
-      "insert into bookings (user_id, total_amount, surcharge_amount, base_amount, tax_amount, currency, ip_address) values($1, $2, $3, $4, $5, $6, $7) returning *",
+      "insert into bookings (user_id, guest_email, total_amount, surcharge_amount, base_amount, tax_amount, currency) values($1, $2, $3, $4, $5, $6, $7) returning *",
       [
         user_id,
+        guest_email,
         total_amount,
         total_surcharge_amount,
         total_base_amount,
         total_tax_amount,
         currency,
-        ip_address,
+        // todo: ip_address,
       ]
     ); // todo: check currency
 
@@ -101,6 +87,7 @@ export default class BookingsService extends BaseService<
     bookingId: number,
     segmentQueries: [string, any[]][]
   ) {
+    // todo: insert statements to be merged into one query rather than in a loop
     let segmentsReturned: ISegment[] = [];
 
     for (let i = 0; i < segmentQueries.length; i++) {
@@ -114,31 +101,178 @@ export default class BookingsService extends BaseService<
     return segmentsReturned;
   }
 
-  async add(data: IAddBooking) {
-    if (data.segments.length === 0)
-      throw createHttpError(400, "No segments provided");
+  private getPassengerCounts(passengers: IPassenger[]) {
+    let adults = passengers.filter((p) => p.passenger_type === "adult").length;
+    let children = passengers.filter(
+      (p) => p.passenger_type === "child"
+    ).length;
+    let infants = passengers.filter(
+      (p) => p.passenger_type === "infant"
+    ).length;
 
-    let total_base_amount = 0;
-    let total_tax_amount = 0;
-    let total_surcharge_amount = 0;
-    let segmentQueries: [string, any[]][] = [];
-    let passengersAdded: {
-      id?: number;
-      nationality: string;
-      passport_number: string;
+    return { adults, children, infants };
+  }
+
+  private async validateBookingItems(
+    client: PoolClient,
+    {
+      guest_email,
+      user_id,
+      adults,
+      children,
+      infants,
+      passengers,
+      segments,
+      total_amount,
+      booking_id,
+    }: {
+      user_id?: number;
+      guest_email?: string;
+      adults: number;
+      children: number;
+      infants: number;
+      passengers: IPassenger[];
+      segments: ISegment[];
+      total_amount: number;
+      booking_id?: number;
+    }
+  ) {
+    if (booking_id) {
+      const { rows: bookings } = await client.query(
+        "select status from bookings where id = $1",
+        [booking_id]
+      );
+      const { status } = bookings[0];
+      if (status === "confirmed") {
+        throw createHttpError(400, "Booking already confirmed");
+      } else if (status === "cancelled") {
+        throw createHttpError(
+          400,
+          "Booking has been cancelled, please book again"
+        );
+      }
+    }
+
+    if (!validatePassengerCounts(adults, children, infants)) {
+      throw createHttpError(400, "Invalid number of passengers");
+    }
+
+    const segmentsFromDB: {
+      segment_total_amount: number;
+      segment_base_amount: number;
+      segment_tax_amount: number;
+      segment_surcharge_amount: number;
+      // todo: maybe add individual adult, etc prices to booking too?
     }[] = [];
 
+    for (let i = 0; i < segments.length; i++) {
+      const { rows } = await client.query(
+        `
+  select distinct f.id as flight_id, departure_time,
+    (
+      $1 * (ff.adult_base_amount)
+      + $2 * (ff.child_base_amount)
+      + $3 * (ff.infant_base_amount)
+    ) as segment_base_amount,
+     (
+      $1 * (ff.tax_amount)
+      + $2 * (ff.tax_amount)
+      + $3 * (ff.tax_amount)
+    ) as segment_tax_amount, 
+     (
+      $1 * (ff.surcharge_amount)
+      + $2 * (ff.surcharge_amount)
+      + $3 * (ff.surcharge_amount)
+    ) as segment_surcharge_amount
+    (
+      $1 * (ff.adult_base_amount + ff.tax_amount + ff.surcharge_amount)
+      + $2 * (ff.child_base_amount + ff.tax_amount + ff.surcharge_amount)
+      + $3 * (ff.infant_base_amount + ff.tax_amount + ff.surcharge_amount)
+    ) as segment_total_amount
+  from flights f
+    join flight_fares ff on ff.flight_id = f.id
+    join seats s on s.flight_id = f.id and s.seat_class = ff.seat_class
+  where f.id = $4 and s.is_available is true
+    and f.status = 'scheduled'
+    and s.seat_class = $5
+    and s.is_available = true
+  group by f.id, s.seat_class, ff.id
+    having count(s.id) >= $6
+  `,
+        [
+          adults,
+          children,
+          infants,
+          segments[i].flight_id,
+          segments[i].seat_class,
+          adults + children,
+        ]
+      );
+
+      if (rows.length === 0) {
+        throw createHttpError(
+          400,
+          "No flights found for this request, possibly due to unavailability of seats."
+        );
+      }
+
+      segmentsFromDB.push(rows[0]);
+    }
+
+    const totalFromDB = segmentsFromDB.reduce(
+      (acc, s) => acc + s.segment_total_amount,
+      0
+    );
+
+    if (totalFromDB !== total_amount) {
+      throw createHttpError(
+        400,
+        `The amount you tried to pay, ${total_amount}, does not match the true amount, ${totalFromDB}, at this moment`
+      );
+    }
+
+    return segmentsFromDB;
+  }
+
+  async handleBookingIntent({
+    user_id,
+    booking_id,
+    passengers,
+    segments,
+    total_amount,
+    guest_email,
+  }: IBookingAndPaymentBody) {
     const client = await pool.connect();
     try {
       await client.query("begin");
-      for (let i = 0; i < data.segments.length; i++) {
-        // getting fares for each segment
-        const fares = await this.getFlightFares(client, data.segments[i]);
-        // checking if seat available
-        const seatId = await this.getAvailableSeatId(client, data.segments[i]);
+      const { adults, children, infants } = this.getPassengerCounts(passengers);
+      const segmentsFromDB = await this.validateBookingItems(client, {
+        user_id,
+        guest_email,
+        adults,
+        children,
+        infants,
+        passengers,
+        segments,
+        total_amount,
+        booking_id,
+      });
 
+      let segmentQueries: [string, any[]][] = [];
+      let passengersAdded: {
+        id?: number;
+        nationality: string;
+        passport_number: string;
+      }[] = [];
+
+      const seats: { flight_id: number; seat_id: number }[] = [];
+
+      for (let i = 0; i < segments.length; i++) {
+        // checking if seat available
+        const seatId = await this.getAvailableSeatId(client, segments[i]);
+        seats.push({ seat_id: seatId, flight_id: segments[i].flight_id });
         // adding passenger
-        const { nationality, passport_number } = data.passengers[i];
+        const { nationality, passport_number } = passengers[i];
         let passengerId = null;
         const passengerIndex = passengersAdded.findIndex(
           (p) =>
@@ -146,7 +280,7 @@ export default class BookingsService extends BaseService<
             p.passport_number === passport_number
         );
         if (passengerIndex === -1) {
-          const newPassengerId = await this.insertPassenger(data.passengers[i]);
+          const newPassengerId = await this.insertPassenger(passengers[i]);
           passengersAdded.push({
             id: newPassengerId,
             nationality,
@@ -157,42 +291,46 @@ export default class BookingsService extends BaseService<
           passengerId = passengersAdded[passengerIndex].id;
         }
 
-        await this.setSeatUnavailable(client, seatId);
-
-        const { base_amount, tax_amount, surcharge_amount } = fares[0];
-        total_base_amount += base_amount;
-        total_tax_amount += tax_amount;
-        total_surcharge_amount += surcharge_amount;
-
         // will add segments after adding booking
         segmentQueries.push([
           "insert into booking_segments (booking_id, passenger_id, flight_id, seat_id, base_amount, tax_amount, surcharge_amount, total_amount) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *",
           [
             // booking id inserted later in the array,
             passengerId,
-            data.segments[i].flight_id,
+            segments[i].flight_id,
             seatId,
-            base_amount,
-            tax_amount,
-            surcharge_amount,
-            base_amount + tax_amount + surcharge_amount,
+            segmentsFromDB[i].segment_base_amount,
+            segmentsFromDB[i].segment_tax_amount,
+            segmentsFromDB[i].segment_surcharge_amount,
+            segmentsFromDB[i].segment_total_amount,
           ],
         ]);
       }
 
-      const total_amount =
-        total_base_amount + total_tax_amount + total_surcharge_amount;
       // adding booking
-      const insertedBooking = await this.insertBooking(
-        client,
-        data.user_id,
+      let total_base_amount = segmentsFromDB.reduce(
+        (acc, s) => acc + s.segment_base_amount,
+        0
+      );
+      let total_tax_amount = segmentsFromDB.reduce(
+        (acc, s) => acc + s.segment_tax_amount,
+        0
+      );
+      let total_surcharge_amount = segmentsFromDB.reduce(
+        (acc, s) => acc + s.segment_surcharge_amount,
+        0
+      );
+
+      const insertedBooking = await this.insertBooking(client, {
+        user_id,
+        guest_email,
         total_surcharge_amount,
         total_base_amount,
         total_tax_amount,
         total_amount,
-        "PKR",
-        data.ip_address
-      );
+        currency: "usd",
+        // ip_address,
+      });
       const { id: bookingId } = insertedBooking;
 
       const segmentsReturned = await this.insertAllSegments(
@@ -201,20 +339,24 @@ export default class BookingsService extends BaseService<
         segmentQueries
       );
 
-      this.paymentsService.add({
-        booking_id: bookingId,
-        currency: "PKR",
+      const { clientSecret } = await this.paymentsService.handlePaymentIntent({
+        adults,
+        children,
+        infants,
+        segments,
         total_amount,
-        method: "cash",
-        status: "pending",
-        user_id: data.user_id,
-      }, client);
+        guest_email,
+        user_id,
+        booking_id: insertedBooking.id,
+        seats,
+      });
 
       await client.query("commit");
 
       return {
-        ...insertedBooking,
-        segments: segmentsReturned,
+        // ...insertedBooking,
+        // segments: segmentsReturned,
+        clientSecret,
       };
     } catch (error) {
       await client.query("rollback");
