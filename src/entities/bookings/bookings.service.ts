@@ -51,7 +51,7 @@ export default class BookingsService {
       total_base_amount,
       total_tax_amount,
       total_amount,
-      guest_email,
+      receipt_email,
       currency,
       ip_address,
     }: {
@@ -60,22 +60,22 @@ export default class BookingsService {
       total_base_amount: number;
       total_tax_amount: number;
       total_amount: number;
-      guest_email?: string;
+      receipt_email?: string;
       currency: string;
       ip_address?: string;
     }
   ) {
     const { rows: insertedBookings } = await client.query<IBooking>(
-      "insert into bookings (user_id, guest_email, total_amount, surcharge_amount, base_amount, tax_amount, currency) values($1, $2, $3, $4, $5, $6, $7) returning *",
+      "insert into bookings (user_id, receipt_email, total_amount, surcharge_amount, base_amount, tax_amount, currency) values($1, $2, $3, $4, $5, $6, $7) returning *",
       [
         user_id,
-        guest_email,
+        receipt_email,
         total_amount,
         total_surcharge_amount,
         total_base_amount,
         total_tax_amount,
         currency,
-        // todo: ip_address,
+        // todo: ip_address
       ]
     ); // todo: check currency
 
@@ -116,7 +116,7 @@ export default class BookingsService {
   private async validateBookingItems(
     client: PoolClient,
     {
-      guest_email,
+      receipt_email,
       user_id,
       adults,
       children,
@@ -127,7 +127,7 @@ export default class BookingsService {
       booking_id,
     }: {
       user_id?: number;
-      guest_email?: string;
+      receipt_email?: string;
       adults: number;
       children: number;
       infants: number;
@@ -137,21 +137,21 @@ export default class BookingsService {
       booking_id?: number;
     }
   ) {
-    if (booking_id) {
-      const { rows: bookings } = await client.query(
-        "select status from bookings where id = $1",
-        [booking_id]
-      );
-      const { status } = bookings[0];
-      if (status === "confirmed") {
-        throw createHttpError(400, "Booking already confirmed");
-      } else if (status === "cancelled") {
-        throw createHttpError(
-          400,
-          "Booking has been cancelled, please book again"
-        );
-      }
-    }
+    // if (booking_id) {
+    //   const { rows: bookings } = await client.query(
+    //     "select status from bookings where id = $1 for update",
+    //     [booking_id]
+    //   );
+    //   const { status } = bookings[0];
+    //   if (status === "confirmed") {
+    //     throw createHttpError(400, "Booking already confirmed");
+    //   } else if (status === "cancelled") {
+    //     throw createHttpError(
+    //       400,
+    //       "Booking has been cancelled, please book again"
+    //     );
+    //   }
+    // }
 
     if (!validatePassengerCounts(adults, children, infants)) {
       throw createHttpError(400, "Invalid number of passengers");
@@ -170,20 +170,20 @@ export default class BookingsService {
         `
   select distinct f.id as flight_id, departure_time,
     (
-      $1 * (ff.adult_base_amount)
-      + $2 * (ff.child_base_amount)
-      + $3 * (ff.infant_base_amount)
+      $1 * ff.adult_base_amount
+      + $2 * ff.child_base_amount
+      + $3 * ff.infant_base_amount
     ) as segment_base_amount,
      (
-      $1 * (ff.tax_amount)
-      + $2 * (ff.tax_amount)
-      + $3 * (ff.tax_amount)
+      $1 * ff.tax_amount
+      + $2 * ff.tax_amount
+      + $3 * ff.tax_amount
     ) as segment_tax_amount, 
      (
-      $1 * (ff.surcharge_amount)
-      + $2 * (ff.surcharge_amount)
-      + $3 * (ff.surcharge_amount)
-    ) as segment_surcharge_amount
+      $1 * ff.surcharge_amount
+      + $2 * ff.surcharge_amount
+      + $3 * ff.surcharge_amount
+    ) as segment_surcharge_amount,
     (
       $1 * (ff.adult_base_amount + ff.tax_amount + ff.surcharge_amount)
       + $2 * (ff.child_base_amount + ff.tax_amount + ff.surcharge_amount)
@@ -216,7 +216,13 @@ export default class BookingsService {
         );
       }
 
-      segmentsFromDB.push(rows[0]);
+      segmentsFromDB.push({
+        ...rows[0],
+        segment_base_amount: parseFloat(rows[0].segment_base_amount),
+        segment_tax_amount: parseFloat(rows[0].segment_tax_amount),
+        segment_surcharge_amount: parseFloat(rows[0].segment_surcharge_amount),
+        segment_total_amount: parseFloat(rows[0].segment_total_amount),
+      });
     }
 
     const totalFromDB = segmentsFromDB.reduce(
@@ -236,11 +242,10 @@ export default class BookingsService {
 
   async handleBookingIntent({
     user_id,
-    booking_id,
     passengers,
     segments,
     total_amount,
-    guest_email,
+    receipt_email,
   }: IBookingAndPaymentBody) {
     const client = await pool.connect();
     try {
@@ -248,14 +253,13 @@ export default class BookingsService {
       const { adults, children, infants } = this.getPassengerCounts(passengers);
       const segmentsFromDB = await this.validateBookingItems(client, {
         user_id,
-        guest_email,
+        receipt_email,
         adults,
         children,
         infants,
         passengers,
         segments,
         total_amount,
-        booking_id,
       });
 
       let segmentQueries: [string, any[]][] = [];
@@ -323,7 +327,7 @@ export default class BookingsService {
 
       const insertedBooking = await this.insertBooking(client, {
         user_id,
-        guest_email,
+        receipt_email,
         total_surcharge_amount,
         total_base_amount,
         total_tax_amount,
@@ -331,13 +335,14 @@ export default class BookingsService {
         currency: "usd",
         // ip_address,
       });
-      const { id: bookingId } = insertedBooking;
 
       const segmentsReturned = await this.insertAllSegments(
         client,
-        bookingId,
+        insertedBooking.id,
         segmentQueries
       );
+
+      console.log("\n === CALLING PAYMENT SERVICE === \n");
 
       const { clientSecret } = await this.paymentsService.handlePaymentIntent({
         adults,
@@ -345,11 +350,13 @@ export default class BookingsService {
         infants,
         segments,
         total_amount,
-        guest_email,
+        receipt_email,
         user_id,
         booking_id: insertedBooking.id,
         seats,
       });
+
+      console.log("\n === COMMITTING === \n");
 
       await client.query("commit");
 
@@ -359,6 +366,7 @@ export default class BookingsService {
         clientSecret,
       };
     } catch (error) {
+      console.error("\n === ROLLING BACK === \n");
       await client.query("rollback");
       throw error;
     } finally {
@@ -393,3 +401,5 @@ export default class BookingsService {
 
   // todo: async cancel() {}
 }
+
+export const bookingsService = new BookingsService(paymentsService);

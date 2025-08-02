@@ -136,7 +136,7 @@ order by departure_time asc;`,
       values.push(
         cartId,
         null,
-        "x",
+        "undisclosed",
         null,
         null,
         null,

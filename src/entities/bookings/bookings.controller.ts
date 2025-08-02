@@ -4,7 +4,10 @@ import { MyRequest } from "../auth/auth.types";
 import { bookingAndPaymentBodySchema } from "../payments/payments.types";
 
 class BookingsController {
-  declare service: BookingsService; // overriding service of base
+  declare service: BookingsService;
+  constructor(bookingService: BookingsService) {
+    this.service = bookingService;
+  }
 
   // addWrapper = async (req: MyRequest, res: Response) => {
   //   if ((req.role === "admin" || req.role === "super_admin") || (req.body.user_id === req.userId))

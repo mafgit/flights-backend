@@ -6,18 +6,16 @@ import { stripe } from "../..";
 import { ISegment, IBookingStatus } from "../bookings/bookings.types";
 
 export default class PaymentsService {
-  async insertPayment(data: IAddPayment, client: PoolClient | Pool = pool) {
+  async insertPayment(client: PoolClient, data: IAddPayment) {
     const { rows } = await client.query(
-      "insert into payments (user_id, stripe_payment_intent_id, booking_id, total_amount, currency, method, status, guest_email) values ($1, $2, $3, $4, $5, $6, $7) returning *",
+      "insert into payments (stripe_payment_intent_id, booking_id, total_amount, currency, method, status) values ($1, $2, $3, $4, $5, $6) returning *",
       [
-        data.user_id,
         data.stripe_payment_intent_id,
         data.booking_id,
         data.total_amount,
         data.currency,
         data.method,
         data.status,
-        data.guest_email,
       ]
     );
 
@@ -26,16 +24,16 @@ export default class PaymentsService {
 
   async validatePaymentAttempts({
     booking_id,
-    guest_email,
+    receipt_email,
     user_id,
   }: {
     booking_id: number;
-    guest_email?: string;
+    receipt_email?: string;
     user_id?: number;
   }) {
     const { rows } = await pool.query(
-      "select status from payments where booking_id = $1 and (user_id = $2 or guest_email = $3)",
-      [booking_id, user_id, guest_email]
+      "select status from payments where booking_id = $1 and (user_id = $2 or receipt_email = $3)",
+      [booking_id, user_id, receipt_email]
     );
     if (rows.some((r) => r.status === "paid"))
       throw createHttpError(400, "Payment already made");
@@ -47,7 +45,7 @@ export default class PaymentsService {
   async handlePaymentIntent({
     segments,
     total_amount,
-    guest_email,
+    receipt_email,
     user_id,
     adults,
     children,
@@ -57,7 +55,7 @@ export default class PaymentsService {
   }: {
     segments: ISegment[];
     total_amount: number;
-    guest_email?: string;
+    receipt_email?: string;
     user_id?: number;
     adults: number;
     children: number;
@@ -65,16 +63,19 @@ export default class PaymentsService {
     booking_id: number;
     seats: { flight_id: number; seat_id: number }[];
   }) {
-    if (!guest_email && !user_id)
+    console.log("\n === PAYMENT SERVICE CALLED === \n");
+
+    if (!receipt_email && !user_id)
       throw createHttpError(400, "Neither guest email not user id provided");
     // todo: client instead of pool in booking and payment
     try {
-      await this.validatePaymentAttempts({ booking_id, guest_email, user_id });
+      // await this.validatePaymentAttempts({ booking_id, receipt_email, user_id }); // todo: check
 
       const intent = await stripe.paymentIntents.create({
-        amount: total_amount,
+        amount: total_amount * 100,
         currency: "usd", // todo: check currency?
         automatic_payment_methods: { enabled: true },
+        receipt_email: receipt_email,
         metadata: {
           adults,
           children,
@@ -82,10 +83,14 @@ export default class PaymentsService {
           booking_id: booking_id,
           segments: JSON.stringify(segments),
           seats: JSON.stringify(seats),
-          guest_email: guest_email ?? null,
+          receipt_email: receipt_email ?? null,
           user_id: user_id ?? null,
         },
       });
+
+      // console.log(
+      //   `\n === RETURNING CLIENT SECRET: ===\n: ${intent.client_secret}\n`
+      // );
 
       return {
         clientSecret: intent.client_secret,
@@ -99,6 +104,11 @@ export default class PaymentsService {
   async webhookHandler(signature: string, body: string | Buffer) {
     let event;
 
+    // console.log(
+    //   `\n === WEBHOOK CALLED (ENV= ${process.env
+    //     .STRIPE_WEBHOOK_SECRET!}) === \n`
+    // );
+
     try {
       event = stripe.webhooks.constructEvent(
         body,
@@ -109,57 +119,96 @@ export default class PaymentsService {
       throw createHttpError(400, "Webhook Error");
     }
 
+    // console.log(`\n === PAYMENT INTENT EVENT TYPE: ${event.type} === \n`);
+
     if (
       event.type === "payment_intent.succeeded" ||
       event.type === "payment_intent.payment_failed"
     ) {
       const { object } = event.data;
-      console.log("\n------------\nMetadata received", object.metadata);
+      // console.log("\n------------\nMetadata received", object.metadata);
       const booking_id = parseInt(object.metadata.booking_id);
-      const user_id = parseInt(object.metadata.user_id);
+      const user_id = parseInt(object.metadata.user_id) || undefined;
       let bookingStatus: IBookingStatus = "confirmed";
       let paymentStatus: IPaymentStatus = "paid";
 
-      if (event.type === "payment_intent.succeeded") {
-        // todo: do these in a transaction
-        await this.setSeatsUnavailable(JSON.parse(object.metadata.seats));
-        console.log("PAYMENT INTENT SUCCEEDED");
-      } else if (event.type === "payment_intent.payment_failed") {
-        paymentStatus = "failed";
-        bookingStatus = "cancelled"; // todo: or pending?
-        console.log("\n------------\nMetadata received", object.metadata);
-        console.log("PAYMENT INTENT FAILED");
-      }
+      const client = await pool.connect();
 
-      await this.updateBooking(booking_id, bookingStatus);
-      await this.insertPayment({
-        booking_id,
-        currency: object.metadata.currency,
-        total_amount: object.amount,
-        method: "credit_card", // todo: check
-        status: paymentStatus,
-        user_id,
-        guest_email: object.metadata.guest_email,
-        stripe_payment_intent_id: object.id,
-      });
+      try {
+        await client.query("begin");
+
+        if (event.type === "payment_intent.succeeded") {
+          // todo: do these in a transaction
+          await this.setSeatsUnavailable(
+            client,
+            JSON.parse(object.metadata.seats)
+          );
+          console.log("PAYMENT INTENT SUCCEEDED IN WEBHOOK");
+        } else if (event.type === "payment_intent.payment_failed") {
+          paymentStatus = "failed";
+          bookingStatus = "cancelled"; // todo: or pending?
+          console.log("PAYMENT INTENT FAILED IN WEBHOOK");
+        }
+
+        // console.log({
+        //   booking_id,
+        //   currency: object.currency,
+        //   total_amount: object.amount,
+        //   method: "credit_card", // todo: check
+        //   status: paymentStatus,
+        //   user_id,
+        //   receipt_email: object.metadata.receipt_email,
+        //   stripe_payment_intent_id: object.id,
+        // });
+
+        await this.insertPayment(client, {
+          booking_id,
+          currency: object.currency,
+          total_amount: object.amount / 100,
+          method: "credit_card", // todo: `check`
+          status: paymentStatus,
+          user_id,
+          receipt_email: object.metadata.receipt_email,
+          stripe_payment_intent_id: object.id,
+        });
+        console.log("+++ PAYMENT INSERTED IN DB +++");
+        await this.updateBooking(client, booking_id, bookingStatus);
+        console.log("+++ BOOKING STATUS UPDATED IN DB +++");
+        await client.query("commit");
+      } catch (error) {
+        console.log(error);
+        await client.query("rollback");
+      } finally {
+        client.release();
+      }
     }
 
     return true;
   }
 
   private async setSeatsUnavailable(
+    client: PoolClient,
     seats: { flight_id: number; seat_id: number }[]
   ) {
+    console.log("\n === SETTING FOLLOWING SEATS UNAVAILABLE === \n");
+    console.log(seats);
+
     for (let i = 0; i < seats.length; i++) {
-      await pool.query(
+      await client.query(
         "update seats set is_available = false where id = $1 and flight_id = $2",
         [seats[i].seat_id, seats[i].flight_id]
       );
     }
+
+    console.log("\n +++ SEATS UPDATED IN DB +++ \n");
   }
 
-  async updateBooking(bookingId: number, status: IBookingStatus) {
-    await pool.query("update bookings set status = $1 where id = $2;", [
+  async updateBooking(
+    client: PoolClient,
+    bookingId: number,
+    status: IBookingStatus
+  ) {
+    await client.query("update bookings set status = $1 where id = $2;", [
       status,
       bookingId,
     ]);

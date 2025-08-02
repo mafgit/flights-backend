@@ -1,10 +1,17 @@
-create type user_role as enum ('admin', 'user', 'super_admin');
+create type user_role_enum as enum ('admin', 'user', 'super_admin');
+create type passenger_type_enum as enum ('adult', 'child', 'infant');
+create type gender_enum as enum ('male', 'female', 'undisclosed');
+create type booking_status_enum as enum ('pending', 'cancelled', 'failed', 'confirmed');
+create type segment_status_enum as enum ('confirmed', 'cancelled', 'flown', 'no_show');
+create type payment_status_enum as enum ('paid', 'failed');
+create type flight_status_enum as enum ('scheduled', 'cancelled', 'delayed', 'completed');
+create type payment_method_enum as enum ('cash', 'credit_card', 'debit_card', 'wallet', 'bank_transfer');
 
 create table users (
 	id SERIAL PRIMARY KEY,
 	full_name VARCHAR(100) NOT NULL,
 	email VARCHAR(100) NOT NULL UNIQUE,
-	role user_role DEFAULT 'user',
+	role user_role_enum DEFAULT 'user',
 	-- airline_id INT REFERENCES airlines(id) NULL,
 	password_hash VARCHAR(255) NOT NULL,
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -42,7 +49,6 @@ create table aircrafts (
 	UNIQUE (model, manufacturer)
 );
 
-create type flight_status as enum ('scheduled', 'cancelled', 'delayed', 'completed');
 
 create table flights (
 	id SERIAL PRIMARY KEY,
@@ -51,7 +57,7 @@ create table flights (
 	aircraft_id INT REFERENCES aircrafts(id) NOT NULL,
 	departure_airport_id INT REFERENCES airports(id) NOT NULL,
 	arrival_airport_id INT REFERENCES airports(id) NOT NULL,
-	status flight_status NOT NULL,
+	status flight_status_enum NOT NULL,
 	arrival_time TIMESTAMP WITH TIME ZONE NOT NULL,
 	departure_time TIMESTAMP WITH TIME ZONE NOT NULL,
 	UNIQUE (flight_number, departure_airport_id, departure_time)
@@ -84,8 +90,7 @@ create table seats (
 	UNIQUE (flight_id, seat_number)
 );
 
-create type passenger_type_enum as enum ('adult', 'child', 'infant');
-create type gender_enum as enum ('m', 'f', 'x');
+
 
 create table passengers (
 	id SERIAL PRIMARY KEY,
@@ -98,26 +103,25 @@ create table passengers (
 );
 
 
-create type booking_status as enum ('pending', 'cancelled', 'failed', 'confirmed');
 
 create table bookings (
 	id SERIAL PRIMARY KEY,
 	user_id INT REFERENCES users(id) NULL,
-	guest_email varchar(100) null,
+	receipt_email varchar(100),
 	-- booking_code VARCHAR(100) UNIQUE NOT NULL,
 	base_amount DECIMAL NOT NULL,
 	surcharge_amount DECIMAL NOT NULL,
 	tax_amount DECIMAL NOT NULL,
 	total_amount DECIMAL NOT NULL,
 	currency VARCHAR(30) NOT NULL,
-	status booking_status DEFAULT 'pending',	
+	status booking_status_enum DEFAULT 'pending',	
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 
-	check (not (user_id is null and guest_email is null))
+	-- constraint booking_user_constraint check (not (user_id is null and receipt_email is null))
 );
 
-create type segment_status as enum ('confirmed', 'cancelled', 'flown', 'no_show');
+
 
 create table booking_segments (
 	id SERIAL PRIMARY KEY,
@@ -129,11 +133,8 @@ create table booking_segments (
 	surcharge_amount DECIMAL NOT NULL,
 	tax_amount DECIMAL NOT NULL,
 	total_amount DECIMAL NOT NULL,
-	status segment_status DEFAULT 'confirmed'
+	status segment_status_enum DEFAULT 'confirmed'
 );
-
-create type payment_status as enum ('paid', 'failed', 'refunded');
-create type payment_method_enum as enum ('cash', 'credit_card', 'debit_card', 'wallet', 'bank_transfer');
 
 create table payments (
 	id SERIAL PRIMARY KEY,
@@ -141,14 +142,15 @@ create table payments (
 	total_amount DECIMAL NOT NULL,
 	currency VARCHAR(30) NOT NULL,
 	method payment_method_enum NOT NULL,
-	status payment_status DEFAULT 'pending',
+	status payment_status_enum NOT NULL,
 	
 	stripe_payment_intent_id text,
 
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 
-	check ((status = 'paid' and stripe_payment_intent_id is not null) or status is not 'paid') -- or: intent_id is not null or status is not paid
+	constraint payment_stripe_intent_constraint check ((status = 'paid' and stripe_payment_intent_id is not null) or status <> 'paid')
+	-- or: intent_id is not null or status is not paid
 );
 
 create table carts (
@@ -157,7 +159,7 @@ create table carts (
 	session_id varchar(70) unique null,
 	created_at timestamp with time zone default CURRENT_TIMESTAMP,
 	updated_at timestamp with time zone default CURRENT_TIMESTAMP,
-	check (not (session_id is null and user_id is null))
+	constraint cart_user_constraint check (not (session_id is null and user_id is null))
 );
 
 create table cart_segments (

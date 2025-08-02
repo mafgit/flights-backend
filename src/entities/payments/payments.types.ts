@@ -19,7 +19,7 @@ export interface IPayment {
   status: IPaymentStatus;
   currency: string;
   stripe_payment_intent_id: string;
-  guest_email?: string;
+  receipt_email?: string;
 }
 
 export type IAddPayment = Omit<IPayment, "id">;
@@ -43,7 +43,7 @@ const passengerSchema = z
   .object({
     full_name: z.string().min(2).max(40),
     date_of_birth: z.string().min(8).max(10),
-    gender: z.enum(["m", "f"]),
+    gender: z.enum(["male", "female"]),
     passport_number: z.string().regex(/^[A-Z0-9]{6,10}$/),
     passenger_type: z.enum(["adult", "child", "infant"]),
     // nationality: z.enum(countries.map((c) => c.name)),
@@ -61,13 +61,13 @@ const passengerSchema = z
 export const bookingAndPaymentBodySchema = z
   .object({
     user_id: z.number().int().min(1).optional(),
-    booking_id: z.number().int().min(1).optional(),
+    // booking_id: z.number().int().min(1).optional(),
     total_amount: z.number().gt(0), // todo?: better
     segments: z.array(segmentSchema).min(1).max(6),
     passengers: z.array(passengerSchema).min(1).max(9),
-    guest_email: z.email(),
+    receipt_email: z.email(),
   })
-  .refine(({ user_id, guest_email }) => user_id || guest_email);
+  .refine(({ user_id, receipt_email }) => user_id || receipt_email);
 
 export type IBookingAndPaymentBody = z.infer<
   typeof bookingAndPaymentBodySchema

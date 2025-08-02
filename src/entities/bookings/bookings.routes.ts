@@ -7,8 +7,9 @@ import {
 import { verifyAdmin } from "../../global/middlewares/verifyAdmin";
 import BookingsController from "./bookings.controller";
 import asyncHandler from "express-async-handler";
+import { bookingsService } from "./bookings.service";
 
-const bookingsController = new BookingsController();
+const bookingsController = new BookingsController(bookingsService);
 const router = Router();
 
 // router.get(

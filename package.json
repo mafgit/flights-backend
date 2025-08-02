@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",
-    "stripe": "stripe listen --forward-to http://localhost:5000/api/payments",
+    "stripe": "stripe listen --forward-to http://localhost:5000/api/payments/webhook",
     "build": "tsc",
     "start": "node dist/index.js"
   },

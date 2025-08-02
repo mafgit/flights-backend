@@ -10,7 +10,7 @@ export interface ISegment {
 
 export interface IPassenger {
   full_name: string;
-  gender: "m" | "f" | "x";
+  gender: "male" | "female" | "undisclosed";
   passport_number: string;
   nationality: string;
   date_of_birth: string;
@@ -50,7 +50,7 @@ export const segmentSchema = z.object({
 
 export const passengerSchema = z.object({
   full_name: z.string().min(3),
-  gender: z.enum(["m", "f", "x"]),
+  gender: z.enum(["male", "female", "undisclosed"]),
   passport_number: z.string().min(6),
   nationality: z.string().min(2),
   date_of_birth: z.string().min(3),

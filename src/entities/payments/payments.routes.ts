@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import asyncHandler from "express-async-handler";
 
 // import {
@@ -13,7 +13,9 @@ import asyncHandler from "express-async-handler";
 // import pool from "../../database/db";
 // import { bookingAndPaymentBodySchema } from "./payments.types";
 import PaymentsController from "./payments.controller";
-const paymentsController = new PaymentsController();
+import { paymentsService } from "./payments.service";
+
+const paymentsController = new PaymentsController(paymentsService);
 
 const router = Router();
 
@@ -56,6 +58,6 @@ const router = Router();
 
 // router.post("/create-payment-intent", asyncHandler(paymentsController.paymentIntentHandler))
 
-router.post("/webhook", asyncHandler(paymentsController.webhookHandler))
+router.post("/webhook", asyncHandler(paymentsController.webhookHandler));
 
 export default router;
