@@ -174,6 +174,9 @@ limit 7;
           c.reduce((acc, curr) => acc + curr.duration, 0) <= maxTotalDuration
       );
     }
+
+    console.log(combinations);
+
     return combinations;
   }
 }

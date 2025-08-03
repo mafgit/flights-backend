@@ -6,79 +6,79 @@ export async function geoDataHandler(
   res: Response,
   next: NextFunction
 ) {
-  // console.log("req.ip", req.ip);
-  // console.log(req.cookies);
+  console.log("!!! req.ip !!!", req.ip);
+  console.log(
+    "!!! req.headers['x-forwarded-for'] !!!",
+    req.headers["x-forwarded-for"]
+  );
+  console.log("!!! req.socket.remoteAddress !!!", req.socket.remoteAddress);
 
-  if (!req.cookies.city || req.cookies.city === "undefined") {
-    // const geoRes = await fetch(`https://ipapi.co/${req.ip}/json/`);
-    // const { country, country_name, city, timezone, currency } =
-    //   await geoRes.json();
+  console.log("!!! req.cookies !!!", req.cookies);
 
-    /*
-        {
-        "ip": "...",
-        "network": "...",
-        "version": "IPv4",
-        "city": "Hyderabad",
-        "region": "Punjab",
-        "region_code": "SD",
-        "country": "PK",
-        "country_name": "Pakistan",
-        "country_code": "PK",
-        "country_code_iso3": "PAK",
-        "country_capital": "Islamabad",
-        "country_tld": ".pk",
-        "continent_code": "AS",
-        "in_eu": false,
-        "postal": "...",
-        "latitude": ...,
-        "longitude": ...,
-        "timezone": "Asia/Karachi",
-        "utc_offset": "+0500",
-        "country_calling_code": "+92",
-        "currency": "PKR",
-        "currency_name": "Rupee",
-        "languages": "ur-PK,en-PK,pa,sd,ps,brh",
-        "country_area": ...,
-        "country_population": 212215030,
-        "asn": "...",
-        "org": "..."
-      } */
+  if (
+    !req.cookies.city ||
+    req.cookies.city === "undefined" ||
+    req.cookies.city === "null"
+  ) {
+    let ip = req.ip;
+    if (ip === "::1" || ip === "127.0.0.1") {
+      ip = "8.8.8.8";
+    }
 
-    // const data = await lookup(req.ip!);
-    // if (data) {
-    //   const { currency, country_name, city, country, timezone } = data;
-    //   req.city = city;
-    //   req.country = country;
-    //   req.country_name = country_name;
-    //   req.timezone = timezone;
-    //   req.currency = currency[0];
+    console.log(`\n!!!!!!!! Calling IPAPI ${ip} !!!!!!!\n`);
+    const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
+    const { country, country_name, city, timezone, currency } =
+      await geoRes.json();
 
-    //   res.cookie("city", city);
-    //   res.cookie("country", country);
-    //   res.cookie("country_name", country_name);
-    //   res.cookie("timezone", timezone);
-    //   res.cookie("currency", currency[0]);
-    // } else {
-    //   return next(createHttpError(400, "Failed to get location"));
-    // }
-
-    req.city = "Karachi";
-    req.country = "PK";
-    req.country_name = "Pakistan";
-    req.timezone = "Asia/Karachi";
-    req.currency = "PKR";
+    console.log("!!! IPAPI returned !!!", {
+      country,
+      country_name,
+      city,
+      timezone,
+      currency,
+    });
 
     const options = {
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 365 days
     };
 
-    res.cookie("city", "Karachi", options);
-    res.cookie("country", "PK", options);
-    res.cookie("country_name", "Pakistan", options);
-    res.cookie("timezone", "Asia/Karachi", options);
-    res.cookie("currency", "PKR", options);
+    res.cookie("city", city, options);
+    res.cookie("country", country, options);
+    res.cookie("country_name", country_name, options);
+    res.cookie("timezone", timezone, options);
+    res.cookie("currency", currency, options);
   }
 
   next();
 }
+
+/*
+{
+  "ip": "...",
+  "network": "...",
+  "version": "IPv4",
+  "city": "Hyderabad",
+  "region": "Punjab",
+  "region_code": "SD",
+  "country": "PK",
+  "country_name": "Pakistan",
+  "country_code": "PK",
+  "country_code_iso3": "PAK",
+  "country_capital": "Islamabad",
+  "country_tld": ".pk",
+  "continent_code": "AS",
+  "in_eu": false,
+  "postal": "...",
+  "latitude": ...,
+  "longitude": ...,
+  "timezone": "Asia/Karachi",
+  "utc_offset": "+0500",
+  "country_calling_code": "+92",
+  "currency": "PKR",
+  "currency_name": "Rupee",
+  "languages": "ur-PK,en-PK,pa,sd,ps,brh",
+  "country_area": ...,
+  "country_population": 212215030,
+  "asn": "...",
+  "org": "..."
+} */

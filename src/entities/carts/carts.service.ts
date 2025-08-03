@@ -127,25 +127,20 @@ order by departure_time asc;`,
       "insert into cart_passengers (cart_id, full_name, gender, passport_number, nationality, date_of_birth, passenger_type) values ";
     queries = [];
     values = [];
-    let total_passengers =
-      passengers.adults + passengers.children + passengers.infants;
-    for (let j = 0; j < total_passengers; j++) {
+
+    let types = [];
+
+    for (let i = 0; i < passengers.adults; i++) types.push("adult");
+
+    for (let i = 0; i < passengers.children; i++) types.push("child");
+
+    for (let i = 0; i < passengers.infants; i++) types.push("infant");
+
+    for (let type of types) {
       queries.push(
         `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`
       );
-      values.push(
-        cartId,
-        null,
-        "undisclosed",
-        null,
-        null,
-        null,
-        j < passengers.adults
-          ? "adult"
-          : j <= passengers.adults + passengers.children
-          ? "child"
-          : "infant"
-      ); // todo: check logic
+      values.push(cartId, null, "undisclosed", null, null, null, type);
     }
 
     q += queries.join(", ") + " returning *";

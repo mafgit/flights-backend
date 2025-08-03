@@ -29,16 +29,14 @@ import { errorHandler } from "./global/middlewares/errorHandler";
 import Stripe from "stripe";
 
 const app = express();
-// app.set("trust proxy", true);
-app.enable("trust proxy");
+app.set("trust proxy", true);
+// app.enable("trust proxy");
 app.use(
   cors({
     origin: "http://localhost:3000",
     credentials: true,
   })
 );
-app.use(cookieParser());
-app.use(geoDataHandler);
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 app.use(
@@ -46,6 +44,10 @@ app.use(
   express.raw({ type: "application/json" }),
   PaymentsRouter
 );
+
+app.use(cookieParser());
+app.use(geoDataHandler);
+
 
 app.use(express.json());
 app.use("/api/auth", AuthRouter);
