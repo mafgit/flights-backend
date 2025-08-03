@@ -128,12 +128,13 @@ create table booking_segments (
 	booking_id INT REFERENCES bookings(id),
 	passenger_id INT REFERENCES passengers(id),
 	flight_id INT REFERENCES flights(id),
-	seat_id INT REFERENCES seats(id),
+	seat_id INT REFERENCES seats(id) NULL,
 	base_amount DECIMAL NOT NULL,
 	surcharge_amount DECIMAL NOT NULL,
 	tax_amount DECIMAL NOT NULL,
 	total_amount DECIMAL NOT NULL,
 	status segment_status_enum DEFAULT 'confirmed'
+	-- constraint not_infant_seat check ((passenger_type <> 'infant' and seat_id is not null) or (passenger_type = 'infant' and seat_id is null))
 );
 
 create table payments (

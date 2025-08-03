@@ -263,52 +263,37 @@ export default class BookingsService {
       });
 
       let segmentQueries: [string, any[]][] = [];
-      let passengersAdded: {
-        id?: number;
-        nationality: string;
-        passport_number: string;
-      }[] = [];
+      let passengersAddedIds: number[] = [];
 
       const seats: { flight_id: number; seat_id: number }[] = [];
 
-      for (let i = 0; i < segments.length; i++) {
-        // checking if seat available
-        const seatId = await this.getAvailableSeatId(client, segments[i]);
-        seats.push({ seat_id: seatId, flight_id: segments[i].flight_id });
-        // adding passenger
-        const { nationality, passport_number } = passengers[i];
-        let passengerId = null;
-        const passengerIndex = passengersAdded.findIndex(
-          (p) =>
-            p.nationality === nationality &&
-            p.passport_number === passport_number
-        );
-        if (passengerIndex === -1) {
-          const newPassengerId = await this.insertPassenger(passengers[i]);
-          passengersAdded.push({
-            id: newPassengerId,
-            nationality,
-            passport_number,
-          });
-          passengerId = newPassengerId;
-        } else {
-          passengerId = passengersAdded[passengerIndex].id;
-        }
+      // adding passenger
+      for (let i = 0; i < passengers.length; i++) {
+        const newPassengerId = await this.insertPassenger(passengers[i]);
+        passengersAddedIds.push(newPassengerId);
 
-        // will add segments after adding booking
-        segmentQueries.push([
-          "insert into booking_segments (booking_id, passenger_id, flight_id, seat_id, base_amount, tax_amount, surcharge_amount, total_amount) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *",
-          [
-            // booking id inserted later in the array,
-            passengerId,
-            segments[i].flight_id,
-            seatId,
-            segmentsFromDB[i].segment_base_amount,
-            segmentsFromDB[i].segment_tax_amount,
-            segmentsFromDB[i].segment_surcharge_amount,
-            segmentsFromDB[i].segment_total_amount,
-          ],
-        ]);
+        for (let j = 0; j < segments.length; j++) {
+          // checking if seat available
+          let seatId = undefined;
+          if (passengers[i].passenger_type !== "infant") {
+            seatId = await this.getAvailableSeatId(client, segments[j]);
+            seats.push({ seat_id: seatId, flight_id: segments[j].flight_id });
+          }
+          // will add segments after adding booking
+          segmentQueries.push([
+            "insert into booking_segments (booking_id, passenger_id, flight_id, seat_id, base_amount, tax_amount, surcharge_amount, total_amount) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *",
+            [
+              // booking id inserted later in the array,
+              newPassengerId,
+              segments[j].flight_id,
+              seatId,
+              segmentsFromDB[j].segment_base_amount,
+              segmentsFromDB[j].segment_tax_amount,
+              segmentsFromDB[j].segment_surcharge_amount,
+              segmentsFromDB[j].segment_total_amount,
+            ],
+          ]);
+        }
       }
 
       // adding booking
