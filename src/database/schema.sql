@@ -145,7 +145,7 @@ create table payments (
 	method payment_method_enum NOT NULL,
 	status payment_status_enum NOT NULL,
 	
-	stripe_payment_intent_id text,
+	stripe_payment_intent_id text UNIQUE,
 
 	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

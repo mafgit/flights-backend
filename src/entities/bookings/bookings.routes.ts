@@ -43,6 +43,12 @@ router.post(
   asyncHandler(bookingsController.handleBookingIntent)
 );
 
+router.get(
+  "/get-one/:id",
+  optionalLoggedIn,
+  asyncHandler(bookingsController.getOneBooking)
+);
+
 // router.get(
 //   "/:id",
 //   verifyLoggedIn,

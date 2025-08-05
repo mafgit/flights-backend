@@ -1,4 +1,4 @@
-import { Router, raw } from "express";
+import { Router, json, raw } from "express";
 import asyncHandler from "express-async-handler";
 
 // import {
@@ -58,6 +58,14 @@ const router = Router();
 
 // router.post("/create-payment-intent", asyncHandler(paymentsController.paymentIntentHandler))
 
-router.post("/webhook", asyncHandler(paymentsController.webhookHandler));
-
+router.post(
+  "/webhook",
+  raw({ type: "application/json" }),
+  asyncHandler(paymentsController.webhookHandler)
+);
+router.post(
+  "/get-booking-data-after-success",
+  json(),
+  asyncHandler(paymentsController.getBookingDataAfterSuccess)
+);
 export default router;

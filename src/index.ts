@@ -39,15 +39,10 @@ app.use(
 );
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-app.use(
-  "/api/payments",
-  express.raw({ type: "application/json" }),
-  PaymentsRouter
-);
+app.use("/api/payments", PaymentsRouter);
 
 app.use(cookieParser());
 app.use(geoDataHandler);
-
 
 app.use(express.json());
 app.use("/api/auth", AuthRouter);

@@ -6,14 +6,14 @@ export async function geoDataHandler(
   res: Response,
   next: NextFunction
 ) {
-  console.log("!!! req.ip !!!", req.ip);
-  console.log(
-    "!!! req.headers['x-forwarded-for'] !!!",
-    req.headers["x-forwarded-for"]
-  );
-  console.log("!!! req.socket.remoteAddress !!!", req.socket.remoteAddress);
+  // console.log("!!! req.ip !!!", req.ip);
+  // console.log(
+  //   "!!! req.headers['x-forwarded-for'] !!!",
+  //   req.headers["x-forwarded-for"]
+  // );
+  // console.log("!!! req.socket.remoteAddress !!!", req.socket.remoteAddress);
 
-  console.log("!!! req.cookies !!!", req.cookies);
+  // console.log("!!! req.cookies !!!", req.cookies);
 
   if (
     !req.cookies.city ||
@@ -25,18 +25,18 @@ export async function geoDataHandler(
       ip = "8.8.8.8";
     }
 
-    console.log(`\n!!!!!!!! Calling IPAPI ${ip} !!!!!!!\n`);
+    // console.log(`\n!!!!!!!! Calling IPAPI ${ip} !!!!!!!\n`);
     const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
     const { country, country_name, city, timezone, currency } =
       await geoRes.json();
 
-    console.log("!!! IPAPI returned !!!", {
-      country,
-      country_name,
-      city,
-      timezone,
-      currency,
-    });
+    // console.log("!!! IPAPI returned !!!", {
+    //   country,
+    //   country_name,
+    //   city,
+    //   timezone,
+    //   currency,
+    // });
 
     const options = {
       maxAge: 365 * 24 * 60 * 60 * 1000, // 365 days

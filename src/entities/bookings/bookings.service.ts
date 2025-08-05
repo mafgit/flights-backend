@@ -247,6 +247,8 @@ export default class BookingsService {
     total_amount,
     receipt_email,
   }: IBookingAndPaymentBody) {
+    console.log("booking intent received");
+
     const client = await pool.connect();
     try {
       await client.query("begin");
@@ -348,6 +350,7 @@ export default class BookingsService {
       return {
         // ...insertedBooking,
         // segments: segmentsReturned,
+        bookingId: insertedBooking.id,
         clientSecret,
       };
     } catch (error) {
@@ -385,6 +388,38 @@ export default class BookingsService {
   }
 
   // todo: async cancel() {}
+
+  async getOneBooking(id: number) {
+    const { rows: bookings } = await pool.query(
+      "select * from bookings where id = $1 limit 1",
+      [id]
+    );
+    if (bookings.length === 0) return null;
+
+    const { rows: segments } = await pool.query(
+      `
+select bs.*, p.*, bs.status, s.seat_class,
+f.departure_time, f.arrival_time,
+a1.city as departure_city, a1.name as departure_airport_name, a1.code as departure_airport_code,
+a2.city as arrival_city, a2.name as arrival_airport_name, a2.code as arrival_airport_code
+from booking_segments bs
+join passengers p on bs.passenger_id = p.id
+join flights f on f.id = bs.flight_id
+join seats s on s.id = bs.seat_id and s.flight_id = f.id
+join airports a1 on f.departure_airport_id = a1.id
+join airports a2 on f.arrival_airport_id = a2.id
+where bs.booking_id = $1
+`,
+      [id]
+    );
+
+    if (segments.length === 0) return null;
+
+    return {
+      booking: bookings[0],
+      segments: segments,
+    };
+  }
 }
 
 export const bookingsService = new BookingsService(paymentsService);

@@ -2,6 +2,7 @@ import BookingsService from "./bookings.service";
 import { Response } from "express";
 import { MyRequest } from "../auth/auth.types";
 import { bookingAndPaymentBodySchema } from "../payments/payments.types";
+import { getIdFromParams } from "../../global/utils";
 
 class BookingsController {
   declare service: BookingsService;
@@ -22,8 +23,16 @@ class BookingsController {
 
   handleBookingIntent = async (req: MyRequest, res: Response) => {
     const data = bookingAndPaymentBodySchema.parse(req.body);
-    const { clientSecret } = await this.service.handleBookingIntent(data);
-    res.json({ clientSecret });
+    const { clientSecret, bookingId } = await this.service.handleBookingIntent(
+      data
+    );
+    res.json({ clientSecret, bookingId });
+  };
+
+  getOneBooking = async (req: MyRequest, res: Response) => {
+    const id = getIdFromParams(req);
+    const data = await this.service.getOneBooking(id);
+    res.json({ data });
   };
 }
 

@@ -94,6 +94,7 @@ export default class PaymentsService {
 
       return {
         clientSecret: intent.client_secret,
+        booking_id,
       };
     } catch (error) {
       console.error(error);
@@ -212,6 +213,11 @@ export default class PaymentsService {
       status,
       bookingId,
     ]);
+  }
+
+  async getBookingDataAfterSuccess(id: string) {
+    const { metadata } = await stripe.paymentIntents.retrieve(id);
+    return metadata;
   }
 }
 
