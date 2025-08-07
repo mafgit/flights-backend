@@ -3,12 +3,17 @@ import { verifyLoggedIn } from "../../global/middlewares/verifyLoggedIn";
 import { verifyAdmin } from "../../global/middlewares/verifyAdmin";
 import FlightsController from "./flights.controller";
 import asyncHandler from "express-async-handler";
+import { getExchangeRate } from "../../global/middlewares/getExchangeRate";
 
 const flightsController = new FlightsController();
 const router = Router();
 
-router.get("/", asyncHandler(flightsController.getAll));
-router.post("/search", asyncHandler(flightsController.searchFlights));
+router.get("/", getExchangeRate, asyncHandler(flightsController.getAll));
+router.post(
+  "/search",
+  getExchangeRate,
+  asyncHandler(flightsController.searchFlights)
+);
 router.post(
   "/add",
   verifyLoggedIn,
@@ -27,6 +32,6 @@ router.put(
   verifyAdmin,
   asyncHandler(flightsController.update)
 );
-router.get("/:id", asyncHandler(flightsController.getById));
+router.get("/:id", getExchangeRate, asyncHandler(flightsController.getById));
 
 export default router;

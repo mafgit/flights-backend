@@ -6,6 +6,7 @@ import {
 import { verifyAdmin } from "../../global/middlewares/verifyAdmin";
 import CartsController from "./carts.controller";
 import asyncHandler from "express-async-handler";
+import { getExchangeRate } from "../../global/middlewares/getExchangeRate";
 
 const cartsController = new CartsController();
 const router = Router();
@@ -18,7 +19,12 @@ const router = Router();
 // );
 
 router.post("/add", optionalLoggedIn, asyncHandler(cartsController.add));
-router.get("/get-one", optionalLoggedIn, asyncHandler(cartsController.getOne));
+router.get(
+  "/get-one",
+  optionalLoggedIn,
+  getExchangeRate,
+  asyncHandler(cartsController.getOne)
+);
 
 router.delete(
   "/delete",

@@ -123,7 +123,7 @@ export default class BookingsService {
       infants,
       passengers,
       segments,
-      total_amount,
+      converted_total_amount,
       booking_id,
     }: {
       user_id?: number;
@@ -133,7 +133,7 @@ export default class BookingsService {
       infants: number;
       passengers: IPassenger[];
       segments: ISegment[];
-      total_amount: number;
+      converted_total_amount: number;
       booking_id?: number;
     }
   ) {
@@ -230,29 +230,38 @@ export default class BookingsService {
       0
     );
 
-    if (totalFromDB !== total_amount) {
+    if (totalFromDB.toFixed(2) !== converted_total_amount.toFixed(2)) {
       throw createHttpError(
         400,
-        `The amount you tried to pay, ${total_amount}, does not match the true amount, ${totalFromDB}, at this moment`
+        `The amount you tried to pay, ${converted_total_amount.toFixed(
+          2
+        )}, does not match the true amount, ${totalFromDB.toFixed(
+          2
+        )}, at this moment`
       );
     }
 
     return segmentsFromDB;
   }
 
-  async handleBookingIntent({
-    user_id,
-    passengers,
-    segments,
-    total_amount,
-    receipt_email,
-  }: IBookingAndPaymentBody) {
+  async handleBookingIntent(
+    currency: string,
+    exchangeRate: number,
+    {
+      user_id,
+      passengers,
+      segments,
+      total_amount,
+      receipt_email,
+    }: IBookingAndPaymentBody
+  ) {
     console.log("booking intent received");
 
     const client = await pool.connect();
     try {
       await client.query("begin");
       const { adults, children, infants } = this.getPassengerCounts(passengers);
+
       const segmentsFromDB = await this.validateBookingItems(client, {
         user_id,
         receipt_email,
@@ -261,7 +270,7 @@ export default class BookingsService {
         infants,
         passengers,
         segments,
-        total_amount,
+        converted_total_amount: total_amount / exchangeRate,
       });
 
       let segmentQueries: [string, any[]][] = [];
@@ -319,7 +328,7 @@ export default class BookingsService {
         total_base_amount,
         total_tax_amount,
         total_amount,
-        currency: "usd",
+        currency: currency,
         // ip_address,
       });
 
@@ -341,6 +350,7 @@ export default class BookingsService {
         user_id,
         booking_id: insertedBooking.id,
         seats,
+        currency,
       });
 
       console.log("\n === COMMITTING === \n");
@@ -389,7 +399,7 @@ export default class BookingsService {
 
   // todo: async cancel() {}
 
-  async getOneBooking(id: number) {
+  async getOneBooking(exchangeRate: number, id: number) {
     const { rows: bookings } = await pool.query(
       "select * from bookings where id = $1 limit 1",
       [id]
@@ -416,8 +426,21 @@ where bs.booking_id = $1
     if (segments.length === 0) return null;
 
     return {
-      booking: bookings[0],
-      segments: segments,
+      booking: {
+        ...bookings[0],
+        base_amount: parseFloat(bookings[0].base_amount) * exchangeRate,
+        surcharge_amount:
+          parseFloat(bookings[0].surcharge_amount) * exchangeRate,
+        tax_amount: parseFloat(bookings[0].tax_amount) * exchangeRate,
+        total_amount: parseFloat(bookings[0].total_amount) * exchangeRate,
+      },
+      segments: segments.map((s) => ({
+        ...s,
+        base_amount: parseFloat(s.base_amount) * exchangeRate,
+        surcharge_amount: parseFloat(s.surcharge_amount) * exchangeRate,
+        tax_amount: parseFloat(s.tax_amount) * exchangeRate,
+        total_amount: parseFloat(s.total_amount) * exchangeRate,
+      })),
     };
   }
 }

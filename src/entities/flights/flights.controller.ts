@@ -1,12 +1,8 @@
-import {
-  IAddFlight,
-  IFlight,
-  addSchema,
-  searchSchema,
-} from "./flights.types";
+import { IAddFlight, IFlight, addSchema, searchSchema } from "./flights.types";
 import FlightsService from "./flights.service";
 import BaseController from "../../global/BaseController";
 import { Request, Response } from "express";
+import { MyRequest } from "../auth/auth.types";
 
 const flightsService = new FlightsService();
 
@@ -18,7 +14,7 @@ class FlightsController extends BaseController<IFlight, IAddFlight> {
     this.addSchema = addSchema;
   }
 
-  searchFlights = async (req: Request, res: Response) => {
+  searchFlights = async (req: MyRequest, res: Response) => {
     const {
       flights,
       airlineIds,
@@ -28,6 +24,7 @@ class FlightsController extends BaseController<IFlight, IAddFlight> {
     } = searchSchema.parse(req.body);
 
     const rows = await this.service.searchFlights(
+      req.exchangeRate!,
       flights,
       passengers,
       departureTimes,

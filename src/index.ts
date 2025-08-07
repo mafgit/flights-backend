@@ -13,6 +13,11 @@ if (environment !== "production") {
 
 import "./database/db";
 
+import ExchangeRatesCache from "./global/ExchangeRatesCache";
+export const exchangeRates = new ExchangeRatesCache(
+  process.env.EXCHANGE_RATES_URL!
+);
+
 import AuthRouter from "./entities/auth/auth.routes";
 import AirlinesRouter from "./entities/airlines/airlines.routes";
 import AircraftsRouter from "./entities/aircrafts/aircrafts.routes";

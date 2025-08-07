@@ -5,6 +5,26 @@ import { Pool, PoolClient } from "pg";
 import { stripe } from "../..";
 import { ISegment, IBookingStatus } from "../bookings/bookings.types";
 
+// currencies in which we do not multiply by 100 before sending to stripe
+const zeroDecimalCurrencies = [
+  "BIF",
+  "CLP",
+  "DJF",
+  "GNF",
+  "JPY",
+  "KMF",
+  "KRW",
+  "MGA",
+  "PYG",
+  "RWF",
+  "UGX",
+  "VND",
+  "VUV",
+  "XAF",
+  "XOF",
+  "XPF",
+];
+
 export default class PaymentsService {
   async insertPayment(client: PoolClient, data: IAddPayment) {
     const { rows } = await client.query(
@@ -52,6 +72,7 @@ export default class PaymentsService {
     infants,
     booking_id,
     seats,
+    currency,
   }: {
     segments: ISegment[];
     total_amount: number;
@@ -62,6 +83,7 @@ export default class PaymentsService {
     infants: number;
     booking_id: number;
     seats: { flight_id: number; seat_id: number }[];
+    currency: string;
   }) {
     console.log("\n === PAYMENT SERVICE CALLED === \n");
 
@@ -72,8 +94,9 @@ export default class PaymentsService {
       // await this.validatePaymentAttempts({ booking_id, receipt_email, user_id }); // todo: check
 
       const intent = await stripe.paymentIntents.create({
-        amount: total_amount * 100,
-        currency: "usd", // todo: check currency?
+        amount:
+          total_amount * (zeroDecimalCurrencies.includes(currency) ? 1 : 100),
+        currency: currency,
         automatic_payment_methods: { enabled: true },
         receipt_email: receipt_email,
         metadata: {
@@ -87,10 +110,6 @@ export default class PaymentsService {
           user_id: user_id ?? null,
         },
       });
-
-      // console.log(
-      //   `\n === RETURNING CLIENT SECRET: ===\n: ${intent.client_secret}\n`
-      // );
 
       return {
         clientSecret: intent.client_secret,
@@ -165,7 +184,9 @@ export default class PaymentsService {
         await this.insertPayment(client, {
           booking_id,
           currency: object.currency,
-          total_amount: object.amount / 100,
+          total_amount:
+            object.amount /
+            (zeroDecimalCurrencies.includes(object.currency) ? 100 : 1),
           method: "credit_card", // todo: `check`
           status: paymentStatus,
           user_id,

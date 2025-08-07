@@ -11,6 +11,7 @@ export interface MyRequest extends Request {
   timezone?: string;
   country?: string;
   country_name?: string;
+  exchangeRate?: number;
 }
 
 export type ILogin = Pick<IUser, "email" | "password">;

@@ -4,7 +4,12 @@ import createHttpError from "http-errors";
 import { v4 as uuidv4 } from "uuid";
 
 export default class CartsService {
-  async getOne(userId?: number, sessionId?: number, cartId?: number) {
+  async getOne(
+    exchangeRate: number,
+    userId?: number,
+    sessionId?: number,
+    cartId?: number
+  ) {
     if (userId || (sessionId && cartId)) {
       let cart;
       // -------------- getting cart --------------
@@ -74,8 +79,13 @@ order by departure_time asc;`,
         segments: segments.map((s) => ({
           ...s,
           duration: parseFloat(s.duration),
-          segment_total_amount: parseFloat(s.segment_total_amount),
-          // adult_base_amount: parseFloat(s.)
+          segment_total_amount:
+            parseFloat(s.segment_total_amount) * exchangeRate,
+          adult_base_amount: parseFloat(s.adult_base_amount) * exchangeRate,
+          tax_amount: parseFloat(s.tax_amount) * exchangeRate,
+          surcharge_amount: parseFloat(s.surcharge_amount) * exchangeRate,
+          child_base_amount: parseFloat(s.child_base_amount) * exchangeRate,
+          infant_base_amount: parseFloat(s.infant_base_amount) * exchangeRate,
         })),
         passengers,
       };

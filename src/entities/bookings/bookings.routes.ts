@@ -8,6 +8,7 @@ import { verifyAdmin } from "../../global/middlewares/verifyAdmin";
 import BookingsController from "./bookings.controller";
 import asyncHandler from "express-async-handler";
 import { bookingsService } from "./bookings.service";
+import { getExchangeRate } from "../../global/middlewares/getExchangeRate";
 
 const bookingsController = new BookingsController(bookingsService);
 const router = Router();
@@ -34,18 +35,21 @@ const router = Router();
 router.get(
   "/my-bookings",
   verifyLoggedIn,
+  getExchangeRate,
   asyncHandler(bookingsController.getMyBookings)
 );
 
 router.post(
   "/create-booking-intent",
   optionalLoggedIn,
+  getExchangeRate,
   asyncHandler(bookingsController.handleBookingIntent)
 );
 
 router.get(
   "/get-one/:id",
   optionalLoggedIn,
+  getExchangeRate,
   asyncHandler(bookingsController.getOneBooking)
 );
 

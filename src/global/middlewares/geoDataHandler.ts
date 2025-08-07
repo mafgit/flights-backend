@@ -25,7 +25,7 @@ export async function geoDataHandler(
       ip = "8.8.8.8";
     }
 
-    // console.log(`\n!!!!!!!! Calling IPAPI ${ip} !!!!!!!\n`);
+    console.log(`Calling IPAPI`);
     const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
     const { country, country_name, city, timezone, currency } =
       await geoRes.json();
@@ -47,6 +47,20 @@ export async function geoDataHandler(
     res.cookie("country_name", country_name, options);
     res.cookie("timezone", timezone, options);
     res.cookie("currency", currency, options);
+
+    req.city = city;
+    req.country = country;
+    req.country_name = country_name;
+    req.timezone = timezone;
+    req.currency = currency;
+
+    console.log("Currency", currency);
+  } else {
+    req.city = req.cookies.city;
+    req.country = req.cookies.country;
+    req.country_name = req.cookies.country_name;
+    req.timezone = req.cookies.timezone;
+    req.currency = req.cookies.currency;
   }
 
   next();

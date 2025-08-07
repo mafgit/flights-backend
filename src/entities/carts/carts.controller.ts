@@ -14,6 +14,7 @@ class CartsController {
 
   getOne = async (req: MyRequest, res: Response) => {
     const data = await this.service.getOne(
+      req.exchangeRate!,
       req.userId,
       req.cookies.sessionId,
       req.cookies.cartId

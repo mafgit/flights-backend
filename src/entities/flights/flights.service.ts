@@ -7,6 +7,8 @@ import {
 import pool from "../../database/db";
 import BaseService from "../../global/BaseService";
 import createHttpError from "http-errors";
+import { cartesian } from "./flights.utils";
+import { exchangeRates } from "../..";
 
 export default class FlightsService extends BaseService<IFlight, IAddFlight> {
   constructor() {
@@ -40,6 +42,7 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
   }
 
   async searchFlights(
+    exchangeRate: number,
     flights: ISearchFlight[],
     passengers: { adults: number; children: number; infants: number },
     departureTimes: { min: number; max: number }[],
@@ -73,64 +76,115 @@ export default class FlightsService extends BaseService<IFlight, IAddFlight> {
         throw createHttpError(400, "More than 10 passengers are not allowed");
       }
 
-      let x = 4;
-
-      let conditions = [
-        "s.is_available = true",
-        "f.status = 'scheduled'",
-        `departure_airport_id = $${x++}`,
-        `arrival_airport_id = $${x++}`,
-        `f.departure_time >= $${x++}`,
-        `f.departure_time <= $${x++}`,
-        `extract(hour from f.departure_time) + extract(minute from f.departure_time) / 60 between $${x++} and $${x++}`,
-      ];
-
-      const departureTime = new Date(
-        data.departure_time.year,
-        data.departure_time.month - 1,
-        data.departure_time.day,
-        0,
-        0,
-        0,
-        0
+      const [query, queryValues] = this.formQuery(
+        data,
+        passengers,
+        departureTimes[i].min,
+        departureTimes[i].max,
+        airlineIds
       );
+      const { rows } = await pool.query<ISearchResult>(query, queryValues);
 
-      const minDepartureTime = new Date(departureTime);
-      minDepartureTime.setDate(
-        minDepartureTime.getDate()
-        //  - data.departure_time.flexibility_days
-      );
-      const maxDepartureTime = new Date(departureTime);
-      maxDepartureTime.setDate(
-        maxDepartureTime.getDate() + data.departure_time.flexibility_days + 1
-      );
-
-      let queryValues: any = [
-        passengers.adults,
-        passengers.children,
-        passengers.infants,
-        data.departure_airport_id,
-        data.arrival_airport_id,
-        minDepartureTime.toISOString(), // with 0:0:0 time for minimum day
-        maxDepartureTime.toISOString(), // with 0:0:0 time for maximum day
-        departureTimes[i].min, // for exact time window of that departure day
-        departureTimes[i].max, // for exact time window of that departure day,
-      ];
-
-      if (airlineIds.length > 0) {
-        conditions.push(`al.id = any($${x++})`);
-        queryValues.push(airlineIds);
+      if (rows.length === 0) {
+        return [];
       }
 
-      if (data.seat_class !== "any") {
-        conditions.push(`s.seat_class = $${x++}`);
-        queryValues.push(data.seat_class);
-      }
+      results.push(
+        rows.map((r) => ({
+          ...r,
+          segment_total_amount:
+            parseFloat((r as any).segment_total_amount) * exchangeRate,
+          duration: parseFloat((r as any).duration),
+        }))
+      );
 
-      let having = [`count(s.id) >= $${x++}`];
-      queryValues.push(passengers.adults + passengers.children);
+      if (rows.length < minLength) minLength = rows.length;
+    }
 
-      let query = `
+    if (minLength === 0) return [];
+
+    // [1,2,3]
+    // [4,5] (2)
+    // [6,7,8]
+
+    // 1,4,6
+    // 2,5,7
+    const combinations = cartesian(results);
+    if (maxTotalDuration) {
+      return combinations.filter(
+        (c) =>
+          c.reduce((acc, curr) => acc + curr.duration, 0) <= maxTotalDuration
+      );
+    }
+
+    return combinations;
+  }
+
+  private formQuery(
+    data: ISearchFlight,
+    passengers: { adults: number; children: number; infants: number },
+    minDepartureDayTime: number,
+    maxDepartureDayTime: number,
+    airlineIds: number[]
+  ) {
+    let x = 4;
+
+    let conditions = [
+      "s.is_available = true",
+      "f.status = 'scheduled'",
+      `departure_airport_id = $${x++}`,
+      `arrival_airport_id = $${x++}`,
+      `f.departure_time >= $${x++}`,
+      `f.departure_time <= $${x++}`,
+      `extract(hour from f.departure_time) + extract(minute from f.departure_time) / 60 between $${x++} and $${x++}`,
+    ];
+
+    const departureTime = new Date(
+      data.departure_time.year,
+      data.departure_time.month - 1,
+      data.departure_time.day,
+      0,
+      0,
+      0,
+      0
+    );
+
+    const minDepartureTime = new Date(departureTime);
+    minDepartureTime.setDate(
+      minDepartureTime.getDate()
+      //  - data.departure_time.flexibility_days
+    );
+    const maxDepartureTime = new Date(departureTime);
+    maxDepartureTime.setDate(
+      maxDepartureTime.getDate() + data.departure_time.flexibility_days + 1
+    );
+
+    let queryValues: any = [
+      passengers.adults,
+      passengers.children,
+      passengers.infants,
+      data.departure_airport_id,
+      data.arrival_airport_id,
+      minDepartureTime.toISOString(), // with 0:0:0 time for minimum day
+      maxDepartureTime.toISOString(), // with 0:0:0 time for maximum day
+      minDepartureDayTime, // for exact time window of that departure day
+      maxDepartureDayTime, // for exact time window of that departure day,
+    ];
+
+    if (airlineIds.length > 0) {
+      conditions.push(`al.id = any($${x++})`);
+      queryValues.push(airlineIds);
+    }
+
+    if (data.seat_class !== "any") {
+      conditions.push(`s.seat_class = $${x++}`);
+      queryValues.push(data.seat_class);
+    }
+
+    let having = [`count(s.id) >= $${x++}`];
+    queryValues.push(passengers.adults + passengers.children);
+
+    let query = `
 select distinct f.id, s.seat_class, f.departure_airport_id, f.arrival_airport_id, f.airline_id, f.arrival_time, f.departure_time,
 	ap1.name as departure_airport_name, ap1.city as departure_city,
 	ap2.name as arrival_airport_name, ap2.city as arrival_city,
@@ -156,56 +210,9 @@ group by f.id, s.seat_class, ap1.id, ap2.id, al.id, ff.id
 limit 7;
       `;
 
-      console.log(query, "\n\n", queryValues);
-
-      // if (airlineIds.length > 0) queryValues.push(airlineIds);
-      // queryValues.push(passengers.adults + passengers.children);
-
-      const { rows } = await pool.query(query, queryValues);
-
-      if (rows.length === 0) {
-        return [];
-      }
-
-      results.push(
-        rows.map((r) => ({
-          ...r,
-          segment_total_amount: parseFloat(r.segment_total_amount),
-          duration: parseFloat(r.duration),
-        }))
-      );
-
-      if (rows.length < minLength) minLength = rows.length;
-    }
-
-    if (minLength === 0) return [];
-
-    // [1,2,3]
-    // [4,5] (2)
-    // [6,7,8]
-
-    // 1,4,6
-    // 2,5,7
-    const combinations = cartesian(results);
-    if (maxTotalDuration) {
-      return combinations.filter(
-        (c) =>
-          c.reduce((acc, curr) => acc + curr.duration, 0) <= maxTotalDuration
-      );
-    }
-
-    console.log(combinations);
-
-    return combinations;
+    return [query, queryValues];
   }
 }
 
 // todo: ensure that prev segment is not after this segment (both in back and frontend)
 // todo: ensure when querying flights, that X number of seats are available
-
-function cartesian(arrays: ISearchResult[][]) {
-  return arrays.reduce<ISearchResult[][]>(
-    (a, b) => a.flatMap((x) => b.map((y) => [...x, y])),
-    [[]]
-  );
-}

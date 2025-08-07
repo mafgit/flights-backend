@@ -24,6 +24,8 @@ class BookingsController {
   handleBookingIntent = async (req: MyRequest, res: Response) => {
     const data = bookingAndPaymentBodySchema.parse(req.body);
     const { clientSecret, bookingId } = await this.service.handleBookingIntent(
+      req.currency!,
+      req.exchangeRate!,
       data
     );
     res.json({ clientSecret, bookingId });
@@ -31,7 +33,7 @@ class BookingsController {
 
   getOneBooking = async (req: MyRequest, res: Response) => {
     const id = getIdFromParams(req);
-    const data = await this.service.getOneBooking(id);
+    const data = await this.service.getOneBooking(req.exchangeRate!, id);
     res.json({ data });
   };
 }
