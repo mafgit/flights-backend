@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export type IBookingStatus = "pending" | "cancelled" | "failed" | "confirmed";
-export type ISeatClass = "economy" | "business" | "first" | "premium";
+export type ISeatClass = "economy" | "business" | "first" | "premium" | "any";
 
 export interface ISegment {
   flight_id: number;
@@ -37,6 +37,7 @@ export type IAddBooking = Pick<
 >;
 
 export const seatClassSchema = z.enum([
+  "any",
   "economy",
   "business",
   "first",
