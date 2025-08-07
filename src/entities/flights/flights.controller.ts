@@ -3,6 +3,7 @@ import FlightsService from "./flights.service";
 import BaseController from "../../global/BaseController";
 import { Request, Response } from "express";
 import { MyRequest } from "../auth/auth.types";
+import createHttpError from "http-errors";
 
 const flightsService = new FlightsService();
 
@@ -32,6 +33,24 @@ class FlightsController extends BaseController<IFlight, IAddFlight> {
       maxTotalDuration
     );
     res.json({ data: rows });
+  };
+
+  getCities = async (req: MyRequest, res: Response) => {
+    if (!req.city || !req.country_name || !req.country)
+      throw createHttpError(400, "No city or country in cookies");
+
+    const data = await this.service.getCities(
+      req.exchangeRate!,
+      req.city,
+      req.country_name,
+      req.country
+    );
+    res.json({ data });
+  };
+
+  getCityImages = async (req: Request, res: Response) => {
+    const data = await this.service.getCityImages(req.body.cities);
+    res.json({ data });
   };
 }
 

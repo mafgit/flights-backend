@@ -178,3 +178,17 @@ INSERT INTO seats (flight_id, seat_number, seat_class) VALUES
 (23, '1B', 'economy'),
 (23, '1C', 'business'),
 (23, '1D', 'business');
+
+
+insert into city_images (city, country, image_url)
+values ('Karachi', 'Pakistan', '/city_images/karachi-1.jpg'),
+	('Karachi', 'Pakistan', '/city_images/karachi-2.jpg'),
+	('Lahore', 'Pakistan', '/city_images/lahore-1.jpg'),
+	('Lahore', 'Pakistan', '/city_images/lahore-2.jpg'),
+	('Lahore', 'Pakistan', '/city_images/lahore-3.jpg'),
+	('Dubai', 'UAE', '/city_images/dubai-1.jpg'),
+	('Dubai', 'UAE', '/city_images/dubai-2.jpg'),
+	('New York', 'USA', '/city_images/new-york-1.jpg'),
+	('New York', 'USA', '/city_images/new-york-2.jpg'),
+	('London', 'UK', '/city_images/london-1.jpg'),
+	('London', 'UK', '/city_images/london-2.jpg');

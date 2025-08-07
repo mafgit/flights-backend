@@ -212,7 +212,44 @@ limit 7;
 
     return [query, queryValues];
   }
+
+  getCities = async (
+    exchangeRate: number,
+    city: string,
+    country_name: string,
+    country: string
+  ) => {
+    const { rows } = await pool.query(
+      `
+      select distinct on(a.city, a.country) a.city, a.country, i.image_url, (min(ff.adult_base_amount + ff.tax_amount + ff.surcharge_amount) * $1) as starting_price
+from flights f
+join flight_fares ff on ff.flight_id = f.id
+join airports a on a.id = f.arrival_airport_id
+join city_images i on i.city = a.city and i.country = a.country
+where ff.seat_class = 'economy' and f.departure_airport_id = any(
+	select id from airports where city = $2 and (country = $3 or country = $4)
+)
+and f.status = 'scheduled'
+group by ff.adult_base_amount, ff.id, f.id, a.city, i.image_url, a.country;`,
+      [exchangeRate, city, country_name, country]
+    );
+
+    return rows;
+  };
+
+  getCityImages = async (cities: { city: string; country: string }[]) => {
+    const results: { city: string; country: string; image_url: string }[] = [];
+    
+    for (let i = 0; i < cities.length; i++) {
+      const { rows } = await pool.query(
+        "select city, country, image_url from city_images where city = $1 and country = $2",
+        [cities[i].city, cities[i].country]
+      );
+      results.push(rows[0]); // todo?: random
+    }
+
+    return results
+  };
 }
 
 // todo: ensure that prev segment is not after this segment (both in back and frontend)
-// todo: ensure when querying flights, that X number of seats are available

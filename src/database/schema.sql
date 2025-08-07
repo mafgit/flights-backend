@@ -184,3 +184,10 @@ create table cart_passengers (
 	date_of_birth DATE NULL,
 	passenger_type passenger_type_enum NOT NULL
 );
+
+create table city_images (
+	id serial primary key,
+	city varchar(40) not null,
+	country varchar(40) not null,
+	image_url text not null
+);

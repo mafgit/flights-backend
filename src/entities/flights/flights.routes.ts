@@ -20,6 +20,12 @@ router.post(
   verifyAdmin,
   asyncHandler(flightsController.add)
 );
+router.get(
+  "/cities",
+  getExchangeRate,
+  asyncHandler(flightsController.getCities)
+);
+router.post("/city-images", asyncHandler(flightsController.getCityImages));
 router.delete(
   "/delete/:id",
   verifyLoggedIn,

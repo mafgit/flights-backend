@@ -23,7 +23,7 @@ class ExchangeRatesCache {
     }
   }
 
-  async get(curr: string | undefined) {
+  async get(curr: string) {
     if (!curr) {
       throw createHttpError(400, "No currency provided in cookies");
     }
