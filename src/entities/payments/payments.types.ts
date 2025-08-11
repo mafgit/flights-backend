@@ -48,6 +48,7 @@ const passengerSchema = z
     passenger_type: z.enum(["adult", "child", "infant"]),
     // nationality: z.enum(countries.map((c) => c.name)),
     nationality: z.string().min(2), // todo: enum
+    id: z.number().int().min(1).optional(),
   })
   .refine(
     ({ date_of_birth, passenger_type }) => {

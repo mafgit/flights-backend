@@ -2,6 +2,7 @@ import { IAddCartData } from "./carts.types";
 import pool from "../../database/db";
 import createHttpError from "http-errors";
 import { v4 as uuidv4 } from "uuid";
+import { validatePassengerCounts } from "../bookings/bookings.utils";
 
 export default class CartsService {
   async getOne(
@@ -27,24 +28,28 @@ export default class CartsService {
         cart = rows[0];
       }
 
-      // --------------- getting cart passengers --------------
-      const { rows: passengers } = await pool.query(
-        "select * from cart_passengers where cart_id = $1",
-        [cart.id]
-      );
+      if (!cart || !cart.id) {
+        return { cart: {}, passengers: [], segments: [] };
+      }
 
-      let infants = 0,
-        children = 0,
-        adults = 0;
-      passengers.forEach((p) => {
-        if (p.passenger_type === "infant") {
-          infants++;
-        } else if (p.passenger_type === "child") {
-          children++;
-        } else {
-          adults++;
-        }
-      });
+      // // --------------- getting cart passengers --------------
+      // const { rows: passengers } = await pool.query(
+      //   "select * from cart_passengers where cart_id = $1",
+      //   [cart.id]
+      // );
+
+      // let infants = 0,
+      //   children = 0,
+      //   adults = 0;
+      // passengers.forEach((p) => {
+      //   if (p.passenger_type === "infant") {
+      //     infants++;
+      //   } else if (p.passenger_type === "child") {
+      //     children++;
+      //   } else {
+      //     adults++;
+      //   }
+      // });
 
       // --------------- getting cart segments ----------------
       const { rows: segments } = await pool.query(
@@ -71,7 +76,7 @@ join cart_segments cs on f.id = cs.flight_id and cs.seat_class = s.seat_class
 where f.id = cs.flight_id and s.is_available = true
 	and f.status = 'scheduled' and cs.cart_id = $4
 order by departure_time asc;`,
-        [adults, children, infants, cart.id]
+        [cart.adults, cart.children, cart.infants, cart.id]
       );
 
       return {
@@ -87,7 +92,7 @@ order by departure_time asc;`,
           child_base_amount: parseFloat(s.child_base_amount) * exchangeRate,
           infant_base_amount: parseFloat(s.infant_base_amount) * exchangeRate,
         })),
-        passengers,
+        // passengers,
       };
     } else {
       throw createHttpError(401, "Neither session id found, nor token");
@@ -106,9 +111,24 @@ order by departure_time asc;`,
     }
     // ----- delete previous -----
 
+    if (
+      !validatePassengerCounts(
+        passengers.adults,
+        passengers.children,
+        passengers.infants
+      )
+    )
+      throw createHttpError(400, "Invalid number of passengers");
+
     const { rows: cartRows } = await pool.query(
-      "insert into carts (user_id, session_id) values ($1, $2) returning *",
-      [userId, sessionId]
+      "insert into carts (user_id, session_id, adults, children, infants) values ($1, $2, $3, $4, $5) returning *",
+      [
+        userId,
+        sessionId,
+        passengers.adults,
+        passengers.children,
+        passengers.infants,
+      ]
     );
 
     const cart = cartRows[0];
@@ -132,33 +152,37 @@ order by departure_time asc;`,
 
     // -------- inserting cart passengers --------
 
-    i = 1;
-    q =
-      "insert into cart_passengers (cart_id, full_name, gender, passport_number, nationality, date_of_birth, passenger_type) values ";
-    queries = [];
-    values = [];
+    // i = 1;
+    // q =
+    //   "insert into cart_passengers (cart_id, full_name, gender, passport_number, nationality, date_of_birth, passenger_type) values ";
+    // queries = [];
+    // values = [];
 
-    let types = [];
+    // let types = [];
 
-    for (let i = 0; i < passengers.adults; i++) types.push("adult");
+    // for (let i = 0; i < passengers.adults; i++) types.push("adult");
 
-    for (let i = 0; i < passengers.children; i++) types.push("child");
+    // for (let i = 0; i < passengers.children; i++) types.push("child");
 
-    for (let i = 0; i < passengers.infants; i++) types.push("infant");
+    // for (let i = 0; i < passengers.infants; i++) types.push("infant");
 
-    for (let type of types) {
-      queries.push(
-        `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`
-      );
-      values.push(cartId, null, "undisclosed", null, null, null, type);
-    }
+    // for (let type of types) {
+    //   queries.push(
+    //     `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`
+    //   );
+    //   values.push(cartId, null, "undisclosed", null, null, null, type);
+    // }
 
-    q += queries.join(", ") + " returning *";
-    console.log(q, values);
+    // q += queries.join(", ") + " returning *";
+    // console.log(q, values);
 
-    const { rows: passengerRows } = await pool.query(q, values);
+    // const { rows: passengerRows } = await pool.query(q, values);
 
-    return { cart, segments: segmentRows, passengers: passengerRows };
+    return {
+      cart,
+      segments: segmentRows,
+      // , passengers: passengerRows
+    };
   }
 
   async delete(sessionId?: string, userId?: number) {

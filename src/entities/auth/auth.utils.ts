@@ -49,5 +49,5 @@ export const signAndSetToken = async (
 };
 
 export const hashPassword = async (password: string) => {
-  return await hash(password, process.env.SALT_ROUNDS || 10);
+  return await hash(password, parseInt(process.env.SALT_ROUNDS!) || 10);
 };

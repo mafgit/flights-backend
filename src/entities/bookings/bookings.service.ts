@@ -13,10 +13,13 @@ export default class BookingsService {
     this.paymentsService = paymentsService;
   }
 
-  private async insertPassenger(passenger: IPassenger) {
+  private async insertPassenger(passenger: IPassenger, added_by?: number) {
+    console.log(added_by, passenger);
+
     const { rows: insertedPassengers } = await pool.query(
-      "insert into passengers (date_of_birth, full_name, gender, nationality, passport_number, passenger_type) values ($1, $2, $3, $4, $5, $6) returning *",
+      "insert into passengers (added_by, date_of_birth, full_name, gender, nationality, passport_number, passenger_type) values ($1, $2, $3, $4, $5, $6, $7) returning *",
       [
+        added_by,
         passenger.date_of_birth,
         passenger.full_name,
         passenger.gender,
@@ -26,7 +29,7 @@ export default class BookingsService {
       ]
     );
 
-    return insertedPassengers[0].id;
+    return insertedPassengers[0].id as number;
   }
 
   private async getAvailableSeatId(client: PoolClient, segment: ISegment) {
@@ -280,7 +283,10 @@ export default class BookingsService {
 
       // adding passenger
       for (let i = 0; i < passengers.length; i++) {
-        const newPassengerId = await this.insertPassenger(passengers[i]);
+        let newPassengerId = passengers[i].id;
+        if (!newPassengerId) {
+          newPassengerId = await this.insertPassenger(passengers[i], user_id);
+        }
         passengersAddedIds.push(newPassengerId);
 
         for (let j = 0; j < segments.length; j++) {

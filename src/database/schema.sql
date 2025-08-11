@@ -100,6 +100,7 @@ create table passengers (
 	nationality VARCHAR(30) NOT NULL,
 	date_of_birth DATE NOT NULL,
 	passenger_type passenger_type_enum NOT NULL
+	added_by int references users(id) null
 );
 
 
@@ -157,6 +158,9 @@ create table payments (
 create table carts (
 	id serial primary key,
 	user_id int references users(id) unique null,
+	adults int not null,
+	children int not null,
+	infants int not null,
 	session_id varchar(70) unique null,
 	created_at timestamp with time zone default CURRENT_TIMESTAMP,
 	updated_at timestamp with time zone default CURRENT_TIMESTAMP,
@@ -173,17 +177,17 @@ create table cart_segments (
 );
 
 
-create table cart_passengers (
-	id serial primary key,
-	cart_id int references carts(id) on delete cascade not null,
+-- create table cart_passengers (
+-- 	id serial primary key,
+-- 	cart_id int references carts(id) on delete cascade not null,
 	
-	full_name VARCHAR(50) NULL,
-	gender gender_enum NULL,
-	passport_number VARCHAR(20) NULL,
-	nationality VARCHAR(30) NULL,
-	date_of_birth DATE NULL,
-	passenger_type passenger_type_enum NOT NULL
-);
+-- 	full_name VARCHAR(50) NULL,
+-- 	gender gender_enum NULL,
+-- 	passport_number VARCHAR(20) NULL,
+-- 	nationality VARCHAR(30) NULL,
+-- 	date_of_birth DATE NULL,
+-- 	passenger_type passenger_type_enum NOT NULL
+-- );
 
 create table city_images (
 	id serial primary key,

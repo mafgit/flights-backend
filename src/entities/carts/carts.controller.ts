@@ -13,25 +13,30 @@ class CartsController {
   }
 
   getOne = async (req: MyRequest, res: Response) => {
+    console.log("here");
+
     const data = await this.service.getOne(
       req.exchangeRate!,
       req.userId,
       req.cookies.sessionId,
       req.cookies.cartId
     );
+
+    console.log(data);
+
     res.json({ data });
   };
 
   add = async (req: MyRequest, res: Response) => {
     const parsedBody = addSchema.parse(req.body);
-    const { cart, segments, passengers } = await this.service.add(
+    const { cart, segments } = await this.service.add(
       parsedBody,
       req.userId,
       req.cookies.sessionId
     );
     res.cookie("sessionId", cart.session_id);
     res.cookie("cartId", cart.id);
-    res.json({ data: { cart, segments, passengers } });
+    res.json({ data: { cart, segments } });
   };
 
   delete = async (req: MyRequest, res: Response) => {

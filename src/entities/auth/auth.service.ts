@@ -24,7 +24,7 @@ export default class AuthService {
       throw createHttpError(400, "User already exists");
     }
 
-    const hashedPassword = await hashPassword(data.password)
+    const hashedPassword = await hashPassword(data.password);
 
     const results = await pool.query(
       "insert into users (full_name, email, password_hash) values ($1, $2, $3) returning *",
@@ -32,5 +32,25 @@ export default class AuthService {
     );
     const user = results.rows[0];
     return user;
+  }
+
+  async getAutoBookingData(userId: number) {
+    const { rows } = await pool.query(
+      "select email from users where id = $1 limit 1",
+      [userId]
+    );
+    const email = rows[0].email;
+
+    const { rows: passengers } = await pool.query(
+      "select * from passengers where added_by = $1",
+      [userId]
+    );
+
+    console.log({email, passengers});
+    
+    return {
+      email,
+      passengers,
+    };
   }
 }

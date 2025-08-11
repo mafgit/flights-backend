@@ -27,10 +27,12 @@ export const me = async (req: MyRequest, res: Response): Promise<void> => {
   res.json({ userId: req.userId, role: req.role });
 };
 
-export const logout = async (
-  req: MyRequest,
-  res: Response
-): Promise<void> => {
+export const getAutoBookingData = async (req: MyRequest, res: Response) => {
+  const data = await authService.getAutoBookingData(req.userId!);
+  res.json({ data });
+};
+
+export const logout = async (req: MyRequest, res: Response): Promise<void> => {
   res.clearCookie("token");
   req.userId = undefined;
   req.role = undefined;

@@ -9,6 +9,7 @@ export interface ISegment {
 }
 
 export interface IPassenger {
+  id?: number;
   full_name: string;
   gender: "male" | "female" | "undisclosed";
   passport_number: string;
