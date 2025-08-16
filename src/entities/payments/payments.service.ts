@@ -82,7 +82,7 @@ export default class PaymentsService {
     children: number;
     infants: number;
     booking_id: number;
-    seats: { flight_id: number; seat_id: number }[];
+    seats: { flight_id: number; seat_id: number | undefined }[];
     currency: string;
   }) {
     console.log("\n === PAYMENT SERVICE CALLED === \n");
@@ -94,8 +94,9 @@ export default class PaymentsService {
       // await this.validatePaymentAttempts({ booking_id, receipt_email, user_id }); // todo: check
 
       const intent = await stripe.paymentIntents.create({
-        amount:
-          total_amount * (zeroDecimalCurrencies.includes(currency) ? 1 : 100),
+        amount: Math.round(
+          total_amount * (zeroDecimalCurrencies.includes(currency) ? 1 : 100)
+        ),
         currency: currency,
         automatic_payment_methods: { enabled: true },
         receipt_email: receipt_email,
@@ -184,9 +185,10 @@ export default class PaymentsService {
         await this.insertPayment(client, {
           booking_id,
           currency: object.currency,
-          total_amount:
+          total_amount: Math.round(
             object.amount /
-            (zeroDecimalCurrencies.includes(object.currency) ? 100 : 1),
+              (zeroDecimalCurrencies.includes(object.currency) ? 100 : 1)
+          ),
           method: "credit_card", // todo: `check`
           status: paymentStatus,
           user_id,

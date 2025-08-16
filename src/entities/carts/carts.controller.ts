@@ -13,16 +13,12 @@ class CartsController {
   }
 
   getOne = async (req: MyRequest, res: Response) => {
-    console.log("here");
-
     const data = await this.service.getOne(
       req.exchangeRate!,
       req.userId,
       req.cookies.sessionId,
       req.cookies.cartId
     );
-
-    console.log(data);
 
     res.json({ data });
   };

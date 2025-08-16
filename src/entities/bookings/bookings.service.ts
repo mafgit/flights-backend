@@ -32,18 +32,22 @@ export default class BookingsService {
     return insertedPassengers[0].id as number;
   }
 
-  private async getAvailableSeatId(client: PoolClient, segment: ISegment) {
+  private async getAvailableSeatIds(
+    client: PoolClient,
+    segment: ISegment,
+    numSeats: number = 1
+  ) {
     const { rows: seatRows } = await client.query(
-      "select * from seats where flight_id = $1 and seat_class = $2 and is_available = true limit 1 for update",
+      "select id from seats where flight_id = $1 and seat_class = $2 and is_available = true for update",
       [segment.flight_id, segment.seat_class]
     );
-    if (seatRows.length === 0) {
+    if (seatRows.length < numSeats) {
       throw createHttpError(
         400,
-        "No seat available for this class in this flight"
+        "Enough seats are not available for this seat class in this flight"
       ); // todo?: add manual seat selection
     }
-    return seatRows[0].id;
+    return seatRows.map((s) => s.id);
   }
 
   private async insertBooking(
@@ -165,7 +169,6 @@ export default class BookingsService {
       segment_base_amount: number;
       segment_tax_amount: number;
       segment_surcharge_amount: number;
-      // todo: maybe add individual adult, etc prices to booking too?
     }[] = [];
 
     for (let i = 0; i < segments.length; i++) {
@@ -279,35 +282,41 @@ export default class BookingsService {
       let segmentQueries: [string, any[]][] = [];
       let passengersAddedIds: number[] = [];
 
-      const seats: { flight_id: number; seat_id: number }[] = [];
+      const seats: { flight_id: number; seat_id: number | undefined }[] = [];
 
-      // adding passenger
-      for (let i = 0; i < passengers.length; i++) {
-        let newPassengerId = passengers[i].id;
-        if (!newPassengerId) {
-          newPassengerId = await this.insertPassenger(passengers[i], user_id);
-        }
-        passengersAddedIds.push(newPassengerId);
+      for (let s = 0; s < segments.length; s++) {
+        let availableseatIds: number[] = await this.getAvailableSeatIds(
+          client,
+          segments[s],
+          adults + children
+        );
 
-        for (let j = 0; j < segments.length; j++) {
-          // checking if seat available
-          let seatId = undefined;
-          if (passengers[i].passenger_type !== "infant") {
-            seatId = await this.getAvailableSeatId(client, segments[j]);
-            seats.push({ seat_id: seatId, flight_id: segments[j].flight_id });
+        for (let p = 0; p < passengers.length; p++) {
+          let newPassengerId = passengers[p].id;
+          if (!newPassengerId) {
+            newPassengerId = await this.insertPassenger(passengers[p], user_id);
           }
+          passengersAddedIds.push(newPassengerId);
+          const seatId =
+            passengers[p].passenger_type === "infant"
+              ? undefined
+              : availableseatIds.shift();
+          seats.push({
+            seat_id: seatId,
+            flight_id: segments[s].flight_id,
+          });
           // will add segments after adding booking
           segmentQueries.push([
             "insert into booking_segments (booking_id, passenger_id, flight_id, seat_id, base_amount, tax_amount, surcharge_amount, total_amount) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *",
             [
               // booking id inserted later in the array,
               newPassengerId,
-              segments[j].flight_id,
+              segments[s].flight_id,
               seatId,
-              segmentsFromDB[j].segment_base_amount,
-              segmentsFromDB[j].segment_tax_amount,
-              segmentsFromDB[j].segment_surcharge_amount,
-              segmentsFromDB[j].segment_total_amount,
+              segmentsFromDB[s].segment_base_amount,
+              segmentsFromDB[s].segment_tax_amount,
+              segmentsFromDB[s].segment_surcharge_amount,
+              segmentsFromDB[s].segment_total_amount,
             ],
           ]);
         }
@@ -421,7 +430,7 @@ a2.city as arrival_city, a2.name as arrival_airport_name, a2.code as arrival_air
 from booking_segments bs
 join passengers p on bs.passenger_id = p.id
 join flights f on f.id = bs.flight_id
-join seats s on s.id = bs.seat_id and s.flight_id = f.id
+left join seats s on s.id = bs.seat_id and s.flight_id = f.id
 join airports a1 on f.departure_airport_id = a1.id
 join airports a2 on f.arrival_airport_id = a2.id
 where bs.booking_id = $1
