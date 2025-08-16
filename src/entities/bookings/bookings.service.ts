@@ -1,4 +1,4 @@
-import { IBooking, IPassenger, ISegment } from "./bookings.types";
+import { IBooking, IPassenger, ISeatClass, ISegment } from "./bookings.types";
 import pool from "../../database/db";
 import createHttpError from "http-errors";
 import PaymentsService, { paymentsService } from "../payments/payments.service";
@@ -169,66 +169,57 @@ export default class BookingsService {
       segment_base_amount: number;
       segment_tax_amount: number;
       segment_surcharge_amount: number;
+      seat_class: ISeatClass;
+      flight_id: number;
+      departure_time: string;
+      passenger: IPassenger;
     }[] = [];
 
-    for (let i = 0; i < segments.length; i++) {
-      const { rows } = await client.query(
-        `
-  select distinct f.id as flight_id, departure_time,
-    (
-      $1 * ff.adult_base_amount
-      + $2 * ff.child_base_amount
-      + $3 * ff.infant_base_amount
-    ) as segment_base_amount,
-     (
-      $1 * ff.tax_amount
-      + $2 * ff.tax_amount
-      + $3 * ff.tax_amount
-    ) as segment_tax_amount, 
-     (
-      $1 * ff.surcharge_amount
-      + $2 * ff.surcharge_amount
-      + $3 * ff.surcharge_amount
-    ) as segment_surcharge_amount,
-    (
-      $1 * (ff.adult_base_amount + ff.tax_amount + ff.surcharge_amount)
-      + $2 * (ff.child_base_amount + ff.tax_amount + ff.surcharge_amount)
-      + $3 * (ff.infant_base_amount + ff.tax_amount + ff.surcharge_amount)
-    ) as segment_total_amount
+    for (let s = 0; s < segments.length; s++) {
+      for (let p = 0; p < passengers.length; p++) {
+        const field =
+          passengers[p].passenger_type === "adult"
+            ? "ff.adult_base_amount"
+            : passengers[p].passenger_type === "child"
+            ? "ff.child_base_amount"
+            : "ff.infant_base_amount";
+
+        const { rows } = await client.query(
+          `select f.id as flight_id, departure_time, s.seat_class,
+    ${field} as segment_base_amount,
+    ff.tax_amount as segment_tax_amount, 
+    ff.surcharge_amount as segment_surcharge_amount,
+    (${field} + ff.tax_amount + ff.surcharge_amount) as segment_total_amount
   from flights f
     join flight_fares ff on ff.flight_id = f.id
     join seats s on s.flight_id = f.id and s.seat_class = ff.seat_class
-  where f.id = $4 and s.is_available is true
+  where f.id = $1
     and f.status = 'scheduled'
-    and s.seat_class = $5
+    and s.seat_class = $2
     and s.is_available = true
   group by f.id, s.seat_class, ff.id
-    having count(s.id) >= $6
-  `,
-        [
-          adults,
-          children,
-          infants,
-          segments[i].flight_id,
-          segments[i].seat_class,
-          adults + children,
-        ]
-      );
-
-      if (rows.length === 0) {
-        throw createHttpError(
-          400,
-          "No flights found for this request, possibly due to unavailability of seats."
+    having count(s.id) >= $3`,
+          [segments[s].flight_id, segments[s].seat_class, adults + children]
         );
-      }
 
-      segmentsFromDB.push({
-        ...rows[0],
-        segment_base_amount: parseFloat(rows[0].segment_base_amount),
-        segment_tax_amount: parseFloat(rows[0].segment_tax_amount),
-        segment_surcharge_amount: parseFloat(rows[0].segment_surcharge_amount),
-        segment_total_amount: parseFloat(rows[0].segment_total_amount),
-      });
+        if (rows.length === 0) {
+          throw createHttpError(
+            400,
+            "No flights found for this request, possibly due to unavailability of seats."
+          );
+        }
+
+        segmentsFromDB.push({
+          ...rows[0],
+          passenger: passengers[p],
+          segment_base_amount: parseFloat(rows[0].segment_base_amount),
+          segment_tax_amount: parseFloat(rows[0].segment_tax_amount),
+          segment_surcharge_amount: parseFloat(
+            rows[0].segment_surcharge_amount
+          ),
+          segment_total_amount: parseFloat(rows[0].segment_total_amount),
+        });
+      }
     }
 
     const totalFromDB = segmentsFromDB.reduce(
@@ -284,42 +275,48 @@ export default class BookingsService {
 
       const seats: { flight_id: number; seat_id: number | undefined }[] = [];
 
-      for (let s = 0; s < segments.length; s++) {
-        let availableseatIds: number[] = await this.getAvailableSeatIds(
-          client,
-          segments[s],
-          adults + children
-        );
+      const availableSeatIds: Record<number, number[]> = {};
 
-        for (let p = 0; p < passengers.length; p++) {
-          let newPassengerId = passengers[p].id;
-          if (!newPassengerId) {
-            newPassengerId = await this.insertPassenger(passengers[p], user_id);
-          }
-          passengersAddedIds.push(newPassengerId);
-          const seatId =
-            passengers[p].passenger_type === "infant"
-              ? undefined
-              : availableseatIds.shift();
-          seats.push({
-            seat_id: seatId,
-            flight_id: segments[s].flight_id,
-          });
-          // will add segments after adding booking
-          segmentQueries.push([
-            "insert into booking_segments (booking_id, passenger_id, flight_id, seat_id, base_amount, tax_amount, surcharge_amount, total_amount) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *",
-            [
-              // booking id inserted later in the array,
-              newPassengerId,
-              segments[s].flight_id,
-              seatId,
-              segmentsFromDB[s].segment_base_amount,
-              segmentsFromDB[s].segment_tax_amount,
-              segmentsFromDB[s].segment_surcharge_amount,
-              segmentsFromDB[s].segment_total_amount,
-            ],
-          ]);
+      for (let i = 0; i < segmentsFromDB.length; i++) {
+        if (!(segmentsFromDB[i].flight_id in availableSeatIds)) {
+          availableSeatIds[segmentsFromDB[i].flight_id] =
+            await this.getAvailableSeatIds(
+              client,
+              segmentsFromDB[i],
+              adults + children
+            );
         }
+
+        let newPassengerId = segmentsFromDB[i].passenger.id;
+        if (!newPassengerId) {
+          newPassengerId = await this.insertPassenger(
+            segmentsFromDB[i].passenger,
+            user_id
+          );
+        }
+        passengersAddedIds.push(newPassengerId);
+        const seatId =
+          segmentsFromDB[i].passenger.passenger_type === "infant"
+            ? undefined
+            : availableSeatIds[segmentsFromDB[i].flight_id].shift();
+        seats.push({
+          seat_id: seatId,
+          flight_id: segmentsFromDB[i].flight_id,
+        });
+        // will add segments after adding booking
+        segmentQueries.push([
+          "insert into booking_segments (booking_id, passenger_id, flight_id, seat_id, base_amount, tax_amount, surcharge_amount, total_amount) values ($1, $2, $3, $4, $5, $6, $7, $8) returning *",
+          [
+            // booking id inserted later in the array,
+            newPassengerId,
+            segmentsFromDB[i].flight_id,
+            seatId,
+            segmentsFromDB[i].segment_base_amount,
+            segmentsFromDB[i].segment_tax_amount,
+            segmentsFromDB[i].segment_surcharge_amount,
+            segmentsFromDB[i].segment_total_amount,
+          ],
+        ]);
       }
 
       // adding booking
@@ -447,7 +444,7 @@ where bs.booking_id = $1
         surcharge_amount:
           parseFloat(bookings[0].surcharge_amount) * exchangeRate,
         tax_amount: parseFloat(bookings[0].tax_amount) * exchangeRate,
-        total_amount: parseFloat(bookings[0].total_amount) * exchangeRate,
+        total_amount: parseFloat(bookings[0].total_amount), // already storing it in correct currency so no need to multiply
       },
       segments: segments.map((s) => ({
         ...s,
